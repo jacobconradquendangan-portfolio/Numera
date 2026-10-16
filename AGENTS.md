@@ -38,9 +38,9 @@ For every computed metric or ratio, provide:
 
 #### Example Output Format for the UI:
 > **Current Ratio:** `2.50x`
-> * 🔍 **Formula Used:** $\text{Current Assets} / \text{Current Liabilities}$
-> * 📊 **Solution Substitution:** $\$1,250,000 \text{ (Total Current Assets)} / \$500,000 \text{ (Total Current Liabilities)}$
-> * ✅ **Result:** `2.50` ( Indicates strong short-term liquidity coverage ).
+> * **Formula Used:** $\text{Current Assets} / \text{Current Liabilities}$
+> * **Solution Substitution:** $\$1,250,000 \text{ (Total Current Assets)} / \$500,000 \text{ (Total Current Liabilities)}$
+> * **Result:** `2.50` ( Indicates strong short-term liquidity coverage ).
 
 ## Operating Rules for OpenCode
 1. **Traceability First:** Never output a raw calculated number without backing it up with its data source line-item lineage and formula breakdown.
