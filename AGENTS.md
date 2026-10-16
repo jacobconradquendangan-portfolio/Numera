@@ -45,3 +45,4 @@ For every computed metric or ratio, provide:
 ## Operating Rules for OpenCode
 1. **Traceability First:** Never output a raw calculated number without backing it up with its data source line-item lineage and formula breakdown.
 2. **Missing Data Fallback:** If baseline average data (e.g., average inventory or assets) is unavailable due to single-period uploads, explicitly state the fallback to period-end values in the solution breakdown.
+3. **Manual Git Only:** Never commit, amend, push, or create PRs — the user reviews and handles all git operations manually.
