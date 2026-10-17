@@ -35,6 +35,10 @@ export const CHART_COLORS = {
   liquidity: '#357a3d',
   leverage: '#8f6110',
   roe: '#6b5ca5',
+  cogs: '#b5744a',
+  opex: '#c98a2b',
+  interestTax: '#6b5ca5',
+  netProfit: '#357a3d',
   grid: '#e4dbc5',
   axis: '#cdc1a2',
   tick: '#6c6555',
@@ -43,6 +47,21 @@ export const CHART_COLORS = {
   border: '#e4dbc5',
   paper: '#23211a',
 };
+
+export interface CommonSizePoint {
+  period: string;
+  'Cost of Goods Sold': number;
+  'Operating Expenses': number;
+  'Interest & Taxes': number;
+  'Net Income': number;
+}
+
+export const COMMON_SIZE_SERIES: { key: keyof Omit<CommonSizePoint, 'period'>; label: string; color: string }[] = [
+  { key: 'Cost of Goods Sold', label: 'COGS', color: CHART_COLORS.cogs },
+  { key: 'Operating Expenses', label: 'Operating expenses', color: CHART_COLORS.opex },
+  { key: 'Interest & Taxes', label: 'Interest & taxes', color: CHART_COLORS.interestTax },
+  { key: 'Net Income', label: 'Net income', color: CHART_COLORS.netProfit },
+];
 
 export const TREND_SERIES: { key: keyof Omit<TrendPoint, 'period'>; color: string }[] = [
   { key: 'Revenue', color: CHART_COLORS.revenue },
@@ -132,4 +151,49 @@ export function buildRatioTrendData(reports: RatioReport[]): { data: RatioTrendP
     color: spec.color,
   }));
   return { data, series };
+}
+
+function firstNumber(...values: (number | null)[]): number | null {
+  for (const value of values) {
+    if (value !== null && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function roundPercent(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+export function buildCommonSizeData(income: NormalizedStatement | null): CommonSizePoint[] {
+  if (!income) return [];
+  const points: CommonSizePoint[] = [];
+  for (const period of sortPeriodsAscending(income.periods)) {
+    const revenue = periodValue(income, 'revenue', period);
+    if (revenue === null || revenue === 0) continue;
+
+    const cogsRaw = periodValue(income, 'cost_of_goods_sold', period);
+    const grossProfit = periodValue(income, 'gross_profit', period);
+    const opexRaw = periodValue(income, 'operating_expenses', period);
+    const operatingIncome = periodValue(income, 'operating_income', period);
+    const interest = periodValue(income, 'interest_expense', period);
+    const tax = periodValue(income, 'income_tax_expense', period);
+    const netIncome = periodValue(income, 'net_income', period);
+
+    const cogs = firstNumber(cogsRaw, grossProfit === null ? null : revenue - grossProfit) ?? 0;
+    const opex = firstNumber(opexRaw, grossProfit === null || operatingIncome === null ? null : grossProfit - operatingIncome) ?? 0;
+    const derivedInterestTax =
+      operatingIncome === null || netIncome === null ? null : operatingIncome - netIncome;
+    const explicitInterestTax = interest === null && tax === null ? null : (interest ?? 0) + (tax ?? 0);
+    const interestTax = firstNumber(derivedInterestTax, explicitInterestTax) ?? 0;
+    const net = netIncome ?? 0;
+
+    points.push({
+      period,
+      'Cost of Goods Sold': roundPercent((cogs / revenue) * 100),
+      'Operating Expenses': roundPercent((opex / revenue) * 100),
+      'Interest & Taxes': roundPercent((interestTax / revenue) * 100),
+      'Net Income': roundPercent((net / revenue) * 100),
+    });
+  }
+  return points;
 }

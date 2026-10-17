@@ -2,10 +2,11 @@
 
 import { useMemo } from 'react';
 import type { NormalizedStatement, RatioReport } from '@/lib/types';
-import { buildRatioComparisonData, buildRatioTrendData, buildTrendData } from '@/lib/chartData';
+import { buildCommonSizeData, buildRatioComparisonData, buildRatioTrendData, buildTrendData } from '@/lib/chartData';
 import TrendChart from './charts/TrendChart';
 import RatioComparisonChart from './charts/RatioComparisonChart';
 import RatioTrendChart from './charts/RatioTrendChart';
+import CommonSizeChart from './charts/CommonSizeChart';
 
 interface ChartsPanelProps {
   income: NormalizedStatement | null;
@@ -18,12 +19,13 @@ export default function ChartsPanel({ income, report, reports, period }: ChartsP
   const trend = useMemo(() => buildTrendData(income), [income]);
   const comparison = useMemo(() => buildRatioComparisonData(report), [report]);
   const ratioTrend = useMemo(() => buildRatioTrendData(reports), [reports]);
+  const commonSize = useMemo(() => buildCommonSizeData(income), [income]);
 
   return (
     <section className="rise space-y-6">
       <header className="border-b border-line pb-3">
         <h2 className="font-display text-3xl text-paper">Visual analysis</h2>
-        <p className="rule-label mt-1">Multi-year earnings and ratio trends plus a liquidity vs leverage comparison</p>
+        <p className="rule-label mt-1">Multi-year earnings and ratio trends, a liquidity vs leverage comparison and a common-size cost structure</p>
       </header>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -44,12 +46,22 @@ export default function ChartsPanel({ income, report, reports, period }: ChartsP
         </div>
       </div>
 
-      <div className="panel rounded-2xl px-6 py-6">
-        <div className="mb-4">
-          <p className="font-display text-xl text-paper">Profitability trends</p>
-          <p className="rule-label mt-1">Gross margin, net margin, ROA &amp; ROE across periods · percent</p>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className="panel rounded-2xl px-6 py-6">
+          <div className="mb-4">
+            <p className="font-display text-xl text-paper">Profitability trends</p>
+            <p className="rule-label mt-1">Gross margin, net margin, ROA &amp; ROE across periods · percent</p>
+          </div>
+          <RatioTrendChart data={ratioTrend.data} series={ratioTrend.series} />
         </div>
-        <RatioTrendChart data={ratioTrend.data} series={ratioTrend.series} />
+
+        <div className="panel rounded-2xl px-6 py-6">
+          <div className="mb-4">
+            <p className="font-display text-xl text-paper">Common-size cost structure</p>
+            <p className="rule-label mt-1">Vertical analysis · each line as % of revenue</p>
+          </div>
+          <CommonSizeChart data={commonSize} />
+        </div>
       </div>
     </section>
   );
