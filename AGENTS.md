@@ -46,3 +46,4 @@ For every computed metric or ratio, provide:
 1. **Traceability First:** Never output a raw calculated number without backing it up with its data source line-item lineage and formula breakdown.
 2. **Missing Data Fallback:** If baseline average data (e.g., average inventory or assets) is unavailable due to single-period uploads, explicitly state the fallback to period-end values in the solution breakdown.
 3. **Manual Git Only:** Never commit, amend, push, or create PRs — the user reviews and handles all git operations manually.
+4. **Suggested Commit Message:** After finishing any change, include a short imperative one-line commit message for the user's manual commit, matching the repo's existing style (e.g., "Add downloadable text-based summary report").
