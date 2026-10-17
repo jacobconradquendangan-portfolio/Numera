@@ -179,3 +179,27 @@ details.acc[open] .acc-body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-accentdim);
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  body {
+    background: #ffffff;
+    background-image: none;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  table,
+  tr,
+  li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

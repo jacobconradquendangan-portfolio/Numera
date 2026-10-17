@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import UploadZone from './UploadZone';
 import PasteTextPanel from './PasteTextPanel';
 import ManualEntryPanel from './ManualEntryPanel';
@@ -10,9 +10,12 @@ import Overview from './Overview';
 import ChartsPanel from './ChartsPanel';
 import AnalysisTables from './AnalysisTables';
 import RatioAccordion from './RatioAccordion';
+import ExportMenu from './ExportMenu';
+import ReportDocument from './ReportDocument';
 import AlertBanner from './AlertBanner';
 import type { BannerItem } from './AlertBanner';
 import WelcomeModal from './WelcomeModal';
+import type { ReportScope } from '@/lib/report';
 import type {
   AnalyzeResponse,
   AnalyzeSuccess,
@@ -65,6 +68,20 @@ export default function AnalyzerApp() {
     issues: [],
   });
   const lastInputRef = useRef<LastInput | null>(null);
+  const [printScope, setPrintScope] = useState<ReportScope | null>(null);
+
+  useEffect(() => {
+    if (!printScope) return;
+    const restore = () => setPrintScope(null);
+    window.addEventListener('afterprint', restore);
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.print());
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('afterprint', restore);
+    };
+  }, [printScope]);
 
   const handleManualValidation = useCallback((validation: ManualValidationState) => {
     setManualValidation(validation);
@@ -202,8 +219,9 @@ export default function AnalyzerApp() {
   }, [result]);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 pb-24 pt-8 sm:px-8">
-      <header className="rise mb-10 flex flex-wrap items-center justify-between gap-4">
+    <>
+      <div className="mx-auto w-full max-w-7xl px-5 pb-24 pt-8 sm:px-8 print:hidden">
+        <header className="rise mb-10 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <span className="flex h-11 w-11 items-center justify-center rounded-lg border border-accentdim/60 bg-accent/5 font-display text-xl text-accent">
             N
@@ -357,6 +375,11 @@ export default function AnalyzerApp() {
                 {result.document.source.format.toUpperCase()} · {result.document.source.tableCount} table(s)
                 {result.document.source.filename ? ` · ${result.document.source.filename}` : ''}
               </span>
+              <ExportMenu
+                periods={periods}
+                selectedPeriod={selectedPeriod}
+                onPrint={setPrintScope}
+              />
             </div>
           </div>
 
@@ -407,6 +430,16 @@ export default function AnalyzerApp() {
         </div>
       ) : null}
       <WelcomeModal />
-    </div>
+      </div>
+      {result ? (
+        <ReportDocument
+          result={result}
+          scope={printScope ?? 'selected'}
+          selectedPeriod={selectedPeriod}
+          filename={filename}
+          dayCountBasis={dayCountBasis}
+        />
+      ) : null}
+    </>
   );
 }
