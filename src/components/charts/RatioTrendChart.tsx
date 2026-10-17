@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -44,58 +43,57 @@ export default function RatioTrendChart({ data, series, emptyMessage }: RatioTre
   if (!mounted) return <div className="h-80 w-full" />;
 
   return (
-    <div className="h-80 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 18, left: 4, bottom: 0 }}>
-          <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="period"
-            stroke={CHART_COLORS.axis}
-            tick={{ fill: CHART_COLORS.tick, fontSize: 12 }}
-            tickLine={false}
-          />
-          <YAxis
-            stroke={CHART_COLORS.axis}
-            tick={{ fill: CHART_COLORS.tick, fontSize: 12 }}
-            tickLine={false}
-            width={62}
-            tickFormatter={(value: number) => `${formatCompact(value)}%`}
-          />
-          <Tooltip
-            contentStyle={TOOLTIP_STYLE}
-            labelStyle={{ color: CHART_COLORS.paper, fontWeight: 600, marginBottom: 4 }}
-            formatter={(value, name) => [
-              value === null || value === undefined ? 'n/a' : `${formatCompact(Number(value))}%`,
-              String(name),
-            ]}
-          />
-          <Legend
-            verticalAlign="top"
-            align="right"
-            iconType="circle"
-            wrapperStyle={{
-              fontFamily: 'var(--font-mono), monospace',
-              fontSize: 11,
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              color: CHART_COLORS.tick,
-            }}
-          />
-          {series.map((entry) => (
-            <Line
-              key={entry.key}
-              type="monotone"
-              dataKey={entry.key}
-              name={entry.label}
-              stroke={entry.color}
-              strokeWidth={2.2}
-              connectNulls
-              dot={{ r: 3, strokeWidth: 0, fill: entry.color }}
-              activeDot={{ r: 5 }}
+    <div className="space-y-3">
+      <div className="h-80 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 8, right: 18, left: 4, bottom: 0 }}>
+            <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="period"
+              stroke={CHART_COLORS.axis}
+              tick={{ fill: CHART_COLORS.tick, fontSize: 12 }}
+              tickLine={false}
             />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+            <YAxis
+              stroke={CHART_COLORS.axis}
+              tick={{ fill: CHART_COLORS.tick, fontSize: 12 }}
+              tickLine={false}
+              width={62}
+              tickFormatter={(value: number) => `${formatCompact(value)}%`}
+            />
+            <Tooltip
+              contentStyle={TOOLTIP_STYLE}
+              labelStyle={{ color: CHART_COLORS.paper, fontWeight: 600, marginBottom: 4 }}
+              formatter={(value, name) => [
+                value === null || value === undefined ? 'n/a' : `${formatCompact(Number(value))}%`,
+                String(name),
+              ]}
+            />
+            {series.map((entry) => (
+              <Line
+                key={entry.key}
+                type="monotone"
+                dataKey={entry.key}
+                name={entry.label}
+                stroke={entry.color}
+                strokeWidth={2.2}
+                connectNulls
+                dot={{ r: 3, strokeWidth: 0, fill: entry.color }}
+                activeDot={{ r: 5 }}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-5 px-1">
+        {series.map((entry) => (
+          <span key={entry.key} className="flex items-center gap-2">
+            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: entry.color }} />
+            <span className="rule-label">{entry.label}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
