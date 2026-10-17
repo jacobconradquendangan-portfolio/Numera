@@ -76,6 +76,15 @@ function RatioCard({ ratio, history, selectedPeriod }: { ratio: RatioResult; his
             </div>
           </div>
         ) : null}
+        <div className="mb-5 rounded-xl border border-accent/20 bg-accent/[0.04] px-4 py-3.5">
+          <p className="rule-label mb-2 text-accent/80">What it measures &amp; how to read it</p>
+          <p className="text-sm leading-relaxed text-paper">{ratio.description.measures}</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted">{ratio.description.interpretation}</p>
+          <p className="mt-2.5 flex items-start gap-2 border-t border-accent/15 pt-2.5 text-xs leading-relaxed">
+            <span className="rule-label shrink-0 pt-px text-accent/80">Interpretation</span>
+            <span className="text-accent/90">{ratio.description.benchmark}</span>
+          </p>
+        </div>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="space-y-4">
             <div>

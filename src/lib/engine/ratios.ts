@@ -28,6 +28,12 @@ export interface RatioStep {
   unit: RatioUnit;
 }
 
+export interface RatioDescription {
+  measures: string;
+  interpretation: string;
+  benchmark: string;
+}
+
 export interface RatioResult {
   id: string;
   name: string;
@@ -41,6 +47,7 @@ export interface RatioResult {
   steps: RatioStep[];
   inputs: RatioInput[];
   notes: string[];
+  description: RatioDescription;
   availability: RatioAvailability;
 }
 
@@ -113,6 +120,145 @@ for (const definition of TAXONOMY) LABEL_BY_CATEGORY.set(definition.key, definit
 const INCOME_SOURCE = 'Income Statement';
 const BALANCE_SOURCE = 'Balance Sheet';
 const EXTERNAL_SOURCE = 'External input';
+
+const RATIO_DESCRIPTIONS: Record<string, RatioDescription> = {
+  'current-ratio': {
+    measures: "A company's ability to pay its short-term obligations using its current assets.",
+    interpretation: 'A higher ratio indicates stronger short-term liquidity; a ratio below 1.0 means current liabilities exceed current assets.',
+    benchmark: 'A long-standing textbook rule of thumb is 2:1, but the appropriate level varies widely by industry and business model \u2014 treat it as directional, not a target.',
+  },
+  'quick-ratio': {
+    measures: "A company's ability to cover current liabilities with its most liquid assets, excluding inventory.",
+    interpretation: 'Higher is stronger; below 1.0 suggests reliance on inventory or future sales to meet near-term obligations.',
+    benchmark: 'The classic acid-test rule of thumb is 1:1; read it as directional, since the right level depends on the industry.',
+  },
+  'cash-ratio': {
+    measures: 'The proportion of current liabilities covered by cash and cash equivalents alone.',
+    interpretation: 'The most conservative liquidity test; a higher value signals a larger cash cushion.',
+    benchmark: 'No universal target; the appropriate cash cushion depends on the industry and the cash-conversion cycle. Very high values may indicate idle cash.',
+  },
+  'defensive-interval-ratio': {
+    measures: 'How many days a company can operate using its liquid assets without additional revenue.',
+    interpretation: 'A longer interval indicates a stronger buffer against a revenue interruption.',
+    benchmark: 'No universal benchmark; a longer runway is safer, and a comfortable level depends on how stable the revenue stream is.',
+  },
+  'times-interest-earned': {
+    measures: "How many times a company's operating profit (EBIT) covers its interest expense.",
+    interpretation: 'Higher is safer; a value below 1.0 means EBIT cannot cover interest.',
+    benchmark: 'No fixed threshold; higher is safer, and lenders typically want meaningfully more than 1.0. Compare across peers and over time.',
+  },
+  'tie-cash-basis': {
+    measures: 'Interest coverage on a cash basis, adding depreciation and amortization back to EBIT.',
+    interpretation: 'Higher is safer; the cash view is more forgiving of non-cash charges than TIE.',
+    benchmark: 'Compare against TIE; a markedly higher value signals strong cash generation, though there is no universal target.',
+  },
+  'capex-to-operating-cash': {
+    measures: 'The share of operating cash flow consumed by capital expenditures.',
+    interpretation: 'Lower is better for liquidity; a rising ratio means more cash is tied up in investment.',
+    benchmark: 'Below 1.0 means operations fund investment; above 1.0 means growth is financed externally \u2014 common for fast-growing companies, so context matters.',
+  },
+  'operating-cash-flow-ratio': {
+    measures: "A company's ability to cover current liabilities with cash generated from operations.",
+    interpretation: 'Higher is stronger; it measures liquidity from operations rather than balance-sheet assets.',
+    benchmark: 'At least 1.0 generally means operations cover current liabilities; how much headroom is "enough" is industry-dependent.',
+  },
+  'return-on-equity': {
+    measures: "The profit generated per dollar of shareholders' equity.",
+    interpretation: 'Higher is better; a rising ROE can reflect improved profitability or heavier leverage.',
+    benchmark: 'No universal benchmark; ROE varies widely by industry and leverage. Judge it against peers and the company\u2019s own history.',
+  },
+  'return-on-assets': {
+    measures: 'How efficiently a company uses its total assets to generate profit.',
+    interpretation: 'Higher is better; an improving trend signals better asset productivity.',
+    benchmark: 'Highly industry-dependent \u2014 asset-heavy sectors naturally run low. Compare against peers and the trend rather than a fixed number.',
+  },
+  'return-on-capital-employed': {
+    measures: 'The return generated on all capital employed (equity plus debt) in the business.',
+    interpretation: 'Higher is better; it shows how well long-term capital is turned into profit.',
+    benchmark: "Best judged against the company's cost of capital: returns above it create value, below it destroy value. There is no single target figure.",
+  },
+  'gross-margin': {
+    measures: 'The percentage of revenue retained after deducting the cost of goods sold.',
+    interpretation: 'Higher is better; it reflects pricing power and production efficiency.',
+    benchmark: 'No universal target; gross margins are industry-specific. Read the trend and compare with direct competitors.',
+  },
+  'operating-margin': {
+    measures: 'The percentage of revenue left as operating profit (EBIT) after operating costs.',
+    interpretation: 'Higher is better; it captures core operating efficiency before financing and taxes.',
+    benchmark: 'No universal threshold; a "good" level is industry-specific. Track the trend and compare with peers.',
+  },
+  'net-profit-margin': {
+    measures: 'The percentage of revenue that becomes net income after all expenses, interest and taxes.',
+    interpretation: 'Higher is better; it is the final measure of overall profitability.',
+    benchmark: 'No universal benchmark; net margins vary widely by industry. Best read as a trend and against competitors.',
+  },
+  'debt-to-equity': {
+    measures: "The relative proportion of debt and shareholders' equity used to finance assets.",
+    interpretation: 'Higher means greater financial risk; lower means more conservative financing.',
+    benchmark: 'No universal limit; acceptable leverage depends on the industry, cash-flow stability and the cost of debt. Compare against peers.',
+  },
+  'equity-ratio': {
+    measures: "The proportion of total assets financed by shareholders' equity.",
+    interpretation: 'Higher means a stronger equity cushion and lower reliance on debt.',
+    benchmark: 'No universal target; capital-structure norms differ by industry and are often shaped by lenders or regulation.',
+  },
+  'debt-ratio': {
+    measures: 'The proportion of total assets financed by all liabilities.',
+    interpretation: 'Higher means more leveraged and more reliant on creditors.',
+    benchmark: 'No universal threshold; an appropriate level depends on the industry and how predictable the cash flows are.',
+  },
+  'ar-turnover': {
+    measures: 'How many times accounts receivable are collected during a period.',
+    interpretation: 'Higher is better; it signals faster collection and efficient credit management.',
+    benchmark: 'No universal benchmark; a good rate depends on credit terms and industry. Track the trend over time.',
+  },
+  'ar-days': {
+    measures: 'The average number of days it takes to collect on receivables.',
+    interpretation: 'Lower is better; a shorter period means faster cash collection.',
+    benchmark: 'No universal target; it should approximate the company\u2019s credit terms (e.g., net-30). Days well beyond terms can signal collection issues.',
+  },
+  'asset-turnover': {
+    measures: 'How efficiently total assets generate revenue.',
+    interpretation: 'Higher is better; it shows more sales per dollar of assets.',
+    benchmark: 'No universal benchmark; asset-heavy industries naturally run lower. Best compared with peers.',
+  },
+  'inventory-turnover': {
+    measures: 'How many times inventory is sold and replaced during a period.',
+    interpretation: 'Higher is better; it indicates strong demand and efficient inventory management.',
+    benchmark: 'No universal target; it depends on the industry and product. Compare with peers and follow the trend.',
+  },
+  'inventory-days': {
+    measures: 'The average number of days inventory is held before it is sold.',
+    interpretation: 'Lower is better; a shorter period means inventory converts to sales faster.',
+    benchmark: 'No universal benchmark; the appropriate level depends on the industry and product shelf life.',
+  },
+  'pe-ratio': {
+    measures: 'The market price investors pay for each dollar of earnings.',
+    interpretation: 'Higher can indicate growth expectations or overvaluation; lower may signal undervaluation.',
+    benchmark: 'No universal benchmark; P/E reflects growth, risk and industry. Compare with peers and the company\u2019s own history.',
+  },
+  'ev-to-ebitda': {
+    measures: 'The enterprise value relative to earnings before interest, taxes, depreciation and amortization.',
+    interpretation: 'Lower means the company is cheaper on an operating-cash basis; higher implies a premium.',
+    benchmark: 'No universal multiple; EV/EBITDA is highly sector-specific. Compare within the industry.',
+  },
+  'ev-to-ebit': {
+    measures: 'The enterprise value relative to operating profit (EBIT).',
+    interpretation: 'Lower is cheaper; it accounts for capital intensity better than EV/EBITDA.',
+    benchmark: 'No universal benchmark; best compared within the industry, where it accounts for capital intensity.',
+  },
+  'ev-to-revenue': {
+    measures: 'The enterprise value relative to total revenue.',
+    interpretation: 'Lower is cheaper; useful when comparing companies with differing profitability.',
+    benchmark: 'No universal multiple; revenue multiples vary widely by sector (high-growth software trades far above mature industrials).',
+  },
+};
+
+const FALLBACK_DESCRIPTION: RatioDescription = {
+  measures: 'A financial ratio from the CFI corporate finance set.',
+  interpretation: 'Interpret the value in the context of the industry and the company\u2019s own history.',
+  benchmark: 'No universal benchmark; compare against industry peers.',
+};
 
 function round(value: number, digits = 6): number {
   const factor = 10 ** digits;
@@ -340,6 +486,7 @@ function makeResult(
     steps: payload.steps.map((step) => ({ ...step, value: step.value === null ? null : round(step.value, 6) })),
     inputs: payload.inputs,
     notes,
+    description: RATIO_DESCRIPTIONS[definition.id] ?? FALLBACK_DESCRIPTION,
     availability,
   };
 }
