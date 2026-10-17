@@ -92,6 +92,18 @@ export default function WelcomeModal() {
             Private by design — no data is gathered. Everything you enter stays on this device and is used
             only to compute your analysis.
           </p>
+          <p className="text-xs leading-relaxed text-faint">
+            Found a bug or have a suggestion?{' '}
+            <a
+              href="https://github.com/jacobconradquendangan-portfolio/Numera/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent underline decoration-accent/40 underline-offset-2 transition hover:text-accent/80"
+            >
+              Open an issue on GitHub
+            </a>
+            .
+          </p>
         </div>
         <div className="flex justify-end px-5 pb-5">
           <button
