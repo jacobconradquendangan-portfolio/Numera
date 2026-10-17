@@ -32,6 +32,8 @@ It is a self-contained Next.js application with a bespoke, dependency-light fina
   inventory and defensive-interval days; every day-based solution shows the chosen basis.
 - **Transparent solutions** — each ratio exposes its formula, the substituted source values
   (data lineage) and the step-by-step result.
+- **Downloadable summary report** — export a text-based PDF summary (overview, vertical and
+  horizontal analysis, and every ratio's full audit trail) for the selected period or all periods.
 - **Visual analysis** — trend and ratio-comparison charts.
 - **Input validation** — malformed numbers, duplicate periods, unbalanced statements and
   unreadable files are caught up front with minimisable alert banners.
@@ -101,6 +103,8 @@ Open <http://localhost:3000>.
    the receivables, inventory and defensive-interval day ratios.
 4. Analyse. Review the validation banners, then explore the overview, vertical/horizontal
    tables, ratios and charts — every number backed by its formula and solution.
+5. Use **Download summary** in the period bar to export a text-based PDF report — either the
+   selected period on screen or every period in the statement.
 
 A built-in **Load sample** action in the paste-text panel fills a three-year example so you can
 try the engine immediately.
@@ -112,18 +116,19 @@ try the engine immediately.
 ```
 src/
   app/                     Next.js routes (page, layout, API: analyze, categories)
-  components/              UI (AnalyzerApp, panels, tables, banners, charts)
+  components/              UI (AnalyzerApp, panels, tables, banners, charts, report document)
   lib/
     engine/
       parser.ts            Ingestion, taxonomy matching, normalisation, validation
       analyzer.ts          Vertical & horizontal analysis
       ratios.ts            CFI ratio computation engine
     chartData.ts           Client-safe chart data builders
+    report.ts              Client-safe text summary report model
     validation.ts          Client-safe input validation
     types.ts               Shared client-safe types
     format.ts              Formatting helpers
     sample.ts              Embedded sample statement
-tests/                     Vitest suites (engine, validation, pipeline)
+  tests/                     Vitest suites (engine, validation, pipeline, report)
 ```
 
 ---
@@ -136,7 +141,7 @@ npm run typecheck # static checks
 ```
 
 The suite covers the parser, manual/paste ingestion, balance-sheet validation, the ratio
-engine (benchmarks and edge cases) and full pipeline integration.
+engine (benchmarks and edge cases), the summary report model and full pipeline integration.
 
 ---
 

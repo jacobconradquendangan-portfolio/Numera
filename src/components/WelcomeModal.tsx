@@ -69,10 +69,11 @@ export default function WelcomeModal() {
           <p>
             Audit-grade analysis of any financial statement — vertical and horizontal analysis plus the full
             CFI ratio suite, every figure backed by its formula and step-by-step solution, with each ratio
-            explained so you know what it measures and how to interpret it.
+            explained so you know what it measures and how to interpret it. When you are done, download a
+            text-based summary report as a PDF.
           </p>
           <ol className="space-y-1.5">
-            {['Enter your figures by hand, paste text, or upload a file.', 'Run the analysis and review the data checks.', 'Switch periods and explore ratios, trends, interpretations and solutions.'].map(
+            {['Enter your figures by hand, paste text, or upload a file.', 'Run the analysis and review the data checks.', 'Switch periods and explore ratios, trends, interpretations and solutions.', 'Download a text-based summary report — for one period or all periods.'].map(
               (step, index) => (
                 <li key={index} className="flex items-start gap-2.5">
                   <span className="tabular mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accentdim text-[0.65rem] text-accent">
