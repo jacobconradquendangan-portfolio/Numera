@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { cx } from '@/lib/format';
@@ -28,6 +28,7 @@ export default function CategoryCombobox({ value, options, onChange, placeholder
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
 
   const filtered = useMemo(() => {
     const query = value.trim().toLowerCase();
@@ -123,6 +124,7 @@ export default function CategoryCombobox({ value, options, onChange, placeholder
               <div
                 ref={listRef}
                 role="listbox"
+                id={listboxId}
                 style={{
                   left: anchor.left,
                   width: anchor.width,
@@ -180,6 +182,7 @@ export default function CategoryCombobox({ value, options, onChange, placeholder
         placeholder={placeholder}
         role="combobox"
         aria-expanded={open}
+        aria-controls={listboxId}
         aria-autocomplete="list"
         className={cx(className, 'pr-14')}
       />
