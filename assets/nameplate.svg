@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="340" viewBox="0 0 1280 340" role="img" aria-labelledby="numeraNameplateTitle">
+  <title id="numeraNameplateTitle">Numera — Financial Statement Analyzer</title>
+  <defs>
+    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffdf8" />
+      <stop offset="1" stop-color="#f2ecdc" />
+    </linearGradient>
+    <radialGradient id="glow" cx="0.86" cy="0.06" r="0.7">
+      <stop offset="0" stop-color="#a9771a" stop-opacity="0.16" />
+      <stop offset="1" stop-color="#a9771a" stop-opacity="0" />
+    </radialGradient>
+    <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
+      <path d="M34 0H0V34" fill="none" stroke="#23211a" stroke-opacity="0.05" stroke-width="1" />
+    </pattern>
+    <clipPath id="frame">
+      <rect x="0" y="0" width="1280" height="340" rx="26" />
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <rect x="0" y="0" width="1280" height="340" rx="26" fill="url(#sheen)" />
+    <rect x="0" y="0" width="1280" height="340" fill="url(#grid)" />
+    <rect x="0" y="0" width="1280" height="340" fill="url(#glow)" />
+
+    <g stroke="#b08a3c" stroke-opacity="0.5" stroke-width="2">
+      <line x1="72" y1="34" x2="72" y2="60" />
+      <line x1="72" y1="280" x2="72" y2="306" />
+    </g>
+
+    <rect x="72" y="112" width="88" height="88" rx="18" fill="#fffdf8" stroke="#b08a3c" stroke-width="1.5" />
+    <text x="116" y="172" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="48" font-weight="700" fill="#8f6110">N</text>
+
+    <text x="196" y="168" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" fill="#23211a" letter-spacing="0.5">Numera</text>
+
+    <text x="199" y="203" font-family="'Courier New', Courier, monospace" font-size="15" font-weight="700" fill="#857c66" letter-spacing="5.5">FINANCIAL STATEMENT ANALYZER</text>
+
+    <line x1="199" y1="224" x2="620" y2="224" stroke="#b08a3c" stroke-width="2" stroke-opacity="0.7" />
+
+    <text x="199" y="258" font-family="Georgia, 'Times New Roman', serif" font-size="19" font-style="italic" fill="#6c6555">Audit-grade analysis of any financial statement, with transparent and traceable solutions.</text>
+
+    <text x="199" y="298" font-family="'Courier New', Courier, monospace" font-size="12.5" fill="#a89f88" letter-spacing="3.5">PARSE · ANALYSE · VALIDATE · COMPUTE · REPORT</text>
+
+    <g text-anchor="end">
+      <text x="1208" y="86" font-family="'Courier New', Courier, monospace" font-size="13" fill="#a89f88" letter-spacing="3.5">CFI RATIO ENGINE</text>
+      <text x="1208" y="112" font-family="'Courier New', Courier, monospace" font-size="13" fill="#8f6110" letter-spacing="3.5">VERSION 1.1.0</text>
+    </g>
+
+    <g stroke="#23211a" stroke-opacity="0.12" stroke-width="1">
+      <line x1="1000" y1="168" x2="1208" y2="168" />
+      <line x1="1042" y1="190" x2="1208" y2="190" />
+      <line x1="1084" y1="212" x2="1208" y2="212" />
+      <line x1="1126" y1="234" x2="1208" y2="234" />
+    </g>
+  </g>
+
+  <rect x="0.75" y="0.75" width="1278.5" height="338.5" rx="25.5" fill="none" stroke="#e4dbc5" stroke-width="1.5" />
+</svg>
