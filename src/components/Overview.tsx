@@ -81,10 +81,10 @@ export default function Overview({ validation, income, balance, cashflow, select
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <div className={cx('grid grid-cols-2 gap-3 md:grid-cols-3', cashflow ? 'xl:grid-cols-6' : 'xl:grid-cols-5')}>
         {figures.map((figure) => (
           <div key={figure.label} className="panel rounded-xl px-4 py-4">
-            <p className="rule-label mb-2">{figure.label}</p>
+            <p className="rule-label mb-2 sm:whitespace-nowrap">{figure.label}</p>
             <p className="tabular text-xl text-paper">{formatCompact(figure.value)}</p>
           </div>
         ))}
