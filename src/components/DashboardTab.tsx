@@ -2,18 +2,16 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import RatioTrendChart from './charts/RatioTrendChart';
-import CommonSizeChart from './charts/CommonSizeChart';
-import RatioComparisonChart from './charts/RatioComparisonChart';
 import DuPontPanels from './dashboard/DuPontPanels';
 import CapitalStructureChart from './dashboard/CapitalStructureChart';
+import CashFlowChart from './dashboard/CashFlowChart';
 import WorkingCapitalStrip from './dashboard/WorkingCapitalStrip';
 import RatioHeatTable from './dashboard/RatioHeatTable';
 import {
   buildCapitalStructureData,
-  buildCommonSizeData,
+  buildCashFlowData,
   buildDuPontData,
   buildHeatTableData,
-  buildRatioComparisonData,
   buildRatioTrendData,
   buildWorkingCapitalData,
 } from '@/lib/chartData';
@@ -195,30 +193,25 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
   );
 
   const trendData = useMemo(() => buildRatioTrendData(sortedReports, state.trendIds), [sortedReports, state.trendIds]);
-  const comparisonData = useMemo(
-    () => buildRatioComparisonData(selectedReport, state.comparisonIds),
-    [selectedReport, state.comparisonIds]
-  );
   const duPontData = useMemo(() => buildDuPontData(sortedReports), [sortedReports]);
   const capitalData = useMemo(
     () => buildCapitalStructureData(result.document.statements.balance),
     [result.document.statements.balance]
   );
-  const workingData = useMemo(() => buildWorkingCapitalData(sortedReports), [sortedReports]);
-  const commonSizeData = useMemo(
-    () => buildCommonSizeData(result.document.statements.income),
-    [result.document.statements.income]
+  const cashFlowData = useMemo(
+    () => buildCashFlowData(result.document.statements.cashflow),
+    [result.document.statements.cashflow]
   );
+  const workingData = useMemo(() => buildWorkingCapitalData(sortedReports), [sortedReports]);
   const heatRows = useMemo(() => buildHeatTableData(sortedReports, state.heatIds), [sortedReports, state.heatIds]);
 
   const togglePanel = (id: PanelId) =>
     setState((current) => ({ ...current, panels: { ...current.panels, [id]: !current.panels[id] } }));
 
-  const toggleRatio = (key: 'trendIds' | 'comparisonIds' | 'heatIds', id: string) =>
+  const toggleRatio = (key: 'trendIds' | 'heatIds', id: string) =>
     setState((current) => ({ ...current, [key]: toggleInList(current[key], id) }));
 
-  const clearRatio = (key: 'trendIds' | 'comparisonIds' | 'heatIds') =>
-    setState((current) => ({ ...current, [key]: [] }));
+  const clearRatio = (key: 'trendIds' | 'heatIds') => setState((current) => ({ ...current, [key]: [] }));
 
   const reset = () => setState(defaultDashboardState());
 
@@ -229,15 +222,6 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
       activeIds={state.trendIds}
       onToggle={(id) => toggleRatio('trendIds', id)}
       onClear={() => clearRatio('trendIds')}
-    />
-  );
-  const comparisonPicker = (
-    <RatioPicker
-      label="Series"
-      groups={availableGroups}
-      activeIds={state.comparisonIds}
-      onToggle={(id) => toggleRatio('comparisonIds', id)}
-      onClear={() => clearRatio('comparisonIds')}
     />
   );
   const heatPicker = (
@@ -359,12 +343,9 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
           </PanelShell>
         ) : null}
 
-        {state.panels.margins ? (
-          <PanelShell metaId="margins" span="xl:col-span-2" right={comparisonPicker}>
-            <div className="grid gap-6 xl:grid-cols-2">
-              <CommonSizeChart data={commonSizeData} />
-              <RatioComparisonChart data={comparisonData} />
-            </div>
+        {state.panels.cashflow ? (
+          <PanelShell metaId="cashflow" span="xl:col-span-2">
+            <CashFlowChart data={cashFlowData} />
           </PanelShell>
         ) : null}
 

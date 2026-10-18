@@ -289,13 +289,35 @@ export function buildCapitalStructureData(balance: NormalizedStatement | null): 
   }));
 }
 
+export interface CashFlowPoint {
+  period: string;
+  Operating: number | null;
+  Investing: number | null;
+  Financing: number | null;
+}
+
+export const CASHFLOW_SERIES: { key: keyof Omit<CashFlowPoint, 'period'>; label: string; color: string }[] = [
+  { key: 'Operating', label: 'Operating', color: CHART_COLORS.grossProfit },
+  { key: 'Investing', label: 'Investing', color: CHART_COLORS.cogs },
+  { key: 'Financing', label: 'Financing', color: CHART_COLORS.roe },
+];
+
+export function buildCashFlowData(cashflow: NormalizedStatement | null): CashFlowPoint[] {
+  if (!cashflow) return [];
+  return sortPeriodsAscending(cashflow.periods).map((period) => ({
+    period,
+    Operating: periodValue(cashflow, 'net_cash_from_operating_activities', period),
+    Investing: periodValue(cashflow, 'net_cash_from_investing_activities', period),
+    Financing: periodValue(cashflow, 'net_cash_from_financing_activities', period),
+  }));
+}
+
 export interface WorkingCapitalPoint {
   period: string;
   arDays: number | null;
   inventoryDays: number | null;
   dirDays: number | null;
 }
-
 export function buildWorkingCapitalData(reports: RatioReport[]): WorkingCapitalPoint[] {
   return [...reports]
     .sort((a, b) => periodSortKey(a.period) - periodSortKey(b.period) || a.period.localeCompare(b.period))

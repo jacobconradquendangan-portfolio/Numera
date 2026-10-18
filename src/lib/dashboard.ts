@@ -1,13 +1,13 @@
 import type { RatioCategory } from '@/lib/types';
 
-export const PANEL_IDS = ['kpis', 'trends', 'margins', 'dupont', 'capital', 'heat'] as const;
+export const PANEL_IDS = ['kpis', 'trends', 'cashflow', 'dupont', 'capital', 'heat'] as const;
 
 export type PanelId = (typeof PANEL_IDS)[number];
 
 export const PANEL_META: Record<PanelId, { title: string; deck: string }> = {
   kpis: { title: 'Command ratios', deck: 'Headline figures from the selected period, each with its category' },
   trends: { title: 'Ratio trends', deck: 'Chosen ratios charted across every period, never just the focus one' },
-  margins: { title: 'Margin structure & coverage', deck: 'How revenue splits, and liquidity and leverage trade off' },
+  cashflow: { title: 'Cash flow', deck: 'Operating, investing and financing flows across every period' },
   dupont: { title: 'DuPont decomposition', deck: 'Return on equity broken into margin, turnover and leverage' },
   capital: { title: 'Capital structure & cycle', deck: 'Debt versus equity financing and the working-capital clock' },
   heat: { title: 'Ratio heat table', deck: 'Every chosen ratio across periods, tinted by the change since the prior one' },
@@ -16,20 +16,10 @@ export const PANEL_META: Record<PanelId, { title: string; deck: string }> = {
 export interface DashboardState {
   panels: Record<PanelId, boolean>;
   trendIds: string[];
-  comparisonIds: string[];
   heatIds: string[];
 }
 
 export const DEFAULT_TREND_IDS: string[] = [];
-
-export const DEFAULT_COMPARISON_IDS = [
-  'current-ratio',
-  'quick-ratio',
-  'cash-ratio',
-  'debt-to-equity',
-  'debt-ratio',
-  'equity-ratio',
-];
 
 export const DEFAULT_HEAT_IDS = [
   'current-ratio',
@@ -45,20 +35,19 @@ export const DEFAULT_HEAT_IDS = [
 export const DASHBOARD_CATEGORIES: RatioCategory[] = ['liquidity', 'profitability', 'leverage', 'efficiency', 'valuation'];
 
 const STORAGE_KEY = 'numera-dashboard-state';
-const STATE_VERSION = 2;
+const STATE_VERSION = 3;
 
 export function defaultDashboardState(): DashboardState {
   return {
     panels: {
       kpis: true,
       trends: true,
-      margins: true,
+      cashflow: true,
       dupont: true,
       capital: true,
       heat: true,
     },
     trendIds: [...DEFAULT_TREND_IDS],
-    comparisonIds: [...DEFAULT_COMPARISON_IDS],
     heatIds: [...DEFAULT_HEAT_IDS],
   };
 }
@@ -74,13 +63,12 @@ function sanitize(raw: unknown): DashboardState | null {
     panels: {
       kpis: panels.kpis !== false,
       trends: panels.trends !== false,
-      margins: panels.margins !== false,
+      cashflow: panels.cashflow !== false,
       dupont: panels.dupont !== false,
       capital: panels.capital !== false,
       heat: panels.heat !== false,
     },
     trendIds: ids(incoming.trendIds, base.trendIds),
-    comparisonIds: ids(incoming.comparisonIds, base.comparisonIds),
     heatIds: ids(incoming.heatIds, base.heatIds),
   };
 }
@@ -114,7 +102,6 @@ export function isDefaultState(state: DashboardState): boolean {
   return (
     PANEL_IDS.every((id) => state.panels[id] === base.panels[id]) &&
     state.trendIds.join('|') === base.trendIds.join('|') &&
-    state.comparisonIds.join('|') === base.comparisonIds.join('|') &&
     state.heatIds.join('|') === base.heatIds.join('|')
   );
 }

@@ -4,6 +4,7 @@ import { computeRatiosForAllPeriods } from '@/lib/engine/ratios';
 import type { RatioReport } from '@/lib/engine/ratios';
 import {
   buildCapitalStructureData,
+  buildCashFlowData,
   buildCommonSizeData,
   buildDuPontData,
   buildHeatTableData,
@@ -11,6 +12,33 @@ import {
   buildWorkingCapitalData,
   type CommonSizePoint,
 } from '@/lib/chartData';
+
+const cashflowStatement = {
+  type: 'cashflow' as const,
+  periods: ['2025', '2024'],
+  lines: [
+    { label: 'Net Cash from Operating Activities', values: [500, 420] },
+    { label: 'Net Cash from Investing Activities', values: [-260, -300] },
+    { label: 'Net Cash from Financing Activities', values: [90, 40] },
+  ],
+};
+
+describe('buildCashFlowData', () => {
+  it('maps each cash flow section per period, keeping outflows negative', () => {
+    const document = parseManualDocument({ statements: [cashflowStatement] });
+    const data = buildCashFlowData(document.statements.cashflow);
+    expect(data.map((entry) => entry.period)).toEqual(['2024', '2025']);
+
+    const point = data.find((entry) => entry.period === '2025')!;
+    expect(point.Operating).toBe(500);
+    expect(point.Investing).toBe(-260);
+    expect(point.Financing).toBe(90);
+  });
+
+  it('returns nothing when no cash flow statement was parsed', () => {
+    expect(buildCashFlowData(null)).toEqual([]);
+  });
+});
 
 const completeIncome = {
   type: 'income' as const,
