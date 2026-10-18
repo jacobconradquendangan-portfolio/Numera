@@ -118,3 +118,49 @@ export function isDefaultState(state: DashboardState): boolean {
     state.heatIds.join('|') === base.heatIds.join('|')
   );
 }
+
+const HIGHER_IS_BETTER = new Set([
+  'current-ratio',
+  'quick-ratio',
+  'cash-ratio',
+  'defensive-interval-ratio',
+  'times-interest-earned',
+  'tie-cash-basis',
+  'operating-cash-flow-ratio',
+  'return-on-equity',
+  'return-on-assets',
+  'return-on-capital-employed',
+  'gross-margin',
+  'operating-margin',
+  'net-profit-margin',
+  'equity-ratio',
+  'ar-turnover',
+  'asset-turnover',
+  'inventory-turnover',
+]);
+
+const LOWER_IS_BETTER = new Set(['debt-to-equity', 'debt-ratio', 'ar-days', 'inventory-days']);
+
+const CEILINGS: Record<string, number> = {
+  'current-ratio': 3,
+};
+
+export function ratioFavoursUp(id: string): boolean | null {
+  if (HIGHER_IS_BETTER.has(id)) return true;
+  if (LOWER_IS_BETTER.has(id)) return false;
+  return null;
+}
+
+export type RatioTone = 'pos' | 'neg' | 'flat';
+
+export function movementTone(id: string, current: number | null, prior: number | null): RatioTone | null {
+  const favoursUp = ratioFavoursUp(id);
+  if (favoursUp === null || current === null || prior === null) return null;
+  const change = current - prior;
+  if (change === 0) return 'flat';
+  const better = change > 0 === favoursUp;
+  if (!better) return 'neg';
+  const ceiling = CEILINGS[id];
+  if (ceiling !== undefined && favoursUp && current > ceiling) return null;
+  return 'pos';
+}

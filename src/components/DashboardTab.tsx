@@ -24,6 +24,7 @@ import {
   defaultDashboardState,
   isDefaultState,
   loadDashboardState,
+  movementTone,
   saveDashboardState,
   toggleInList,
   type DashboardState,
@@ -260,6 +261,7 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
               {kpiRatios.map((ratio) => {
                 const prior = priorReport?.ratios.find((entry) => entry.id === ratio.id);
+                const tone = movementTone(ratio.id, ratio.value, prior?.value ?? null);
                 return (
                   <div key={ratio.id} className="flex flex-col rounded-xl border border-line bg-panel px-4 py-3.5">
                     <p className="rule-label truncate" title={ratio.name}>
@@ -268,7 +270,13 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
                     <p
                       className={cx(
                         'tabular mt-2.5 whitespace-nowrap text-xl leading-none xl:text-2xl',
-                        ratio.value === null ? 'text-faint' : 'text-paper'
+                        ratio.value === null
+                          ? 'text-faint'
+                          : tone === 'pos'
+                            ? 'text-pos'
+                            : tone === 'neg'
+                              ? 'text-neg'
+                              : 'text-paper'
                       )}
                     >
                       {ratio.display}
