@@ -6,6 +6,7 @@ import PasteTextPanel from './PasteTextPanel';
 import ManualEntryPanel from './ManualEntryPanel';
 import type { ManualValidationState, ManualSeed } from './ManualEntryPanel';
 import SupplementalPanel from './SupplementalPanel';
+import DashboardTab from './DashboardTab';
 import Overview from './Overview';
 import InsightsPanel from './InsightsPanel';
 import ChartsPanel from './ChartsPanel';
@@ -72,6 +73,7 @@ export default function AnalyzerApp() {
   const seedCounterRef = useRef(0);
   const [manualSeed, setManualSeed] = useState<ManualSeed | null>(null);
   const [clearTick, setClearTick] = useState(0);
+  const [activeView, setActiveView] = useState<'analysis' | 'dashboard'>('analysis');
   const [printScope, setPrintScope] = useState<ReportScope | null>(null);
 
   useEffect(() => {
@@ -101,6 +103,14 @@ export default function AnalyzerApp() {
       body.append('daysInYear', String(dayCountBasis));
       try {
         const response = await fetch('/api/analyze', { method: 'POST', body });
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+          throw new Error(
+            response.status >= 500
+              ? 'The analysis service hit a temporary error. Please try again.'
+              : `The analysis service returned an unexpected response (${response.status}).`
+          );
+        }
         const payload = (await response.json()) as AnalyzeResponse;
         if (!payload.ok) {
           setError(payload.error);
@@ -427,37 +437,73 @@ export default function AnalyzerApp() {
                   </button>
                 ))}
               </div>
-              <span className="tabular ml-auto hidden text-xs text-faint md:block">
-                {result.document.source.format.toUpperCase()} · {result.document.source.tableCount} table(s)
-                {result.document.source.filename ? ` · ${result.document.source.filename}` : ''}
-              </span>
-              <ExportMenu
-                periods={periods}
-                selectedPeriod={selectedPeriod}
-                onPrint={setPrintScope}
-              />
+              {activeView === 'analysis' ? (
+                <>
+                  <span className="tabular ml-auto hidden text-xs text-faint md:block">
+                    {result.document.source.format.toUpperCase()} · {result.document.source.tableCount} table(s)
+                    {result.document.source.filename ? ` · ${result.document.source.filename}` : ''}
+                  </span>
+                  <ExportMenu
+                    periods={periods}
+                    selectedPeriod={selectedPeriod}
+                    onPrint={setPrintScope}
+                  />
+                </>
+              ) : null}
             </div>
-            <nav aria-label="Report sections" className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-line/70 pt-2">
-              {(
-                [
-                  ['Input', '#input-section'],
-                  ['Overview', '#analysis-overview'],
-                  ['Health summary', '#analysis-summary'],
-                  ['Charts', '#analysis-charts'],
-                  ['Statements', '#analysis-statements'],
-                  ['Ratios', '#analysis-ratios'],
-                ] as const
-              ).map(([label, href]) => (
-                <a
-                  key={href}
-                  href={href}
-                  className="rule-label transition hover:text-accent"
-                >
-                  {label}
-                </a>
-              ))}
+            <nav
+              aria-label="Report sections"
+              className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line/70 pt-2"
+            >
+              {activeView === 'analysis'
+                ? (
+                    [
+                      ['Input', '#input-section'],
+                      ['Overview', '#analysis-overview'],
+                      ['Health summary', '#analysis-summary'],
+                      ['Charts', '#analysis-charts'],
+                      ['Statements', '#analysis-statements'],
+                      ['Ratios', '#analysis-ratios'],
+                    ] as const
+                  ).map(([label, href]) => (
+                    <a
+                      key={href}
+                      href={href}
+                      className="rule-label transition hover:text-accent"
+                    >
+                      {label}
+                    </a>
+                  ))
+                : null}
+              <div className="ml-auto flex items-center gap-2">
+                <span className="rule-label">View</span>
+                {(['analysis', 'dashboard'] as const).map((view) => (
+                  <button
+                    key={view}
+                    type="button"
+                    onClick={() => setActiveView(view)}
+                    className={cx(
+                      'inline-flex items-center gap-2 rounded-sm border px-3 py-1.5 font-mono text-[0.62rem] uppercase tracking-[0.16em] transition',
+                      activeView === view
+                        ? 'border-accent bg-accent/10 text-accent'
+                        : 'border-line2 text-muted hover:border-accentdim hover:text-paper'
+                    )}
+                  >
+                    <span>{view}</span>
+                    {view === 'dashboard' ? (
+                      <span className="rounded-sm border border-accent/50 bg-accent/10 px-1.5 py-0.5 text-[0.5rem] leading-none tracking-[0.12em] text-accentdim">
+                        Beta
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
             </nav>
           </div>
+
+          {activeView === 'dashboard' ? <DashboardTab result={result} selectedPeriod={selectedPeriod} /> : null}
+          {activeView === 'analysis' ? (
+          <>
 
           <div id="analysis-overview" className="scroll-mt-32">
             <Overview
@@ -531,6 +577,8 @@ export default function AnalyzerApp() {
             </header>
             <RatioAccordion reports={ratioReports} selectedPeriod={selectedPeriod} />
           </section>
+          </>
+          ) : null}
         </div>
       ) : null}
       <WelcomeModal />

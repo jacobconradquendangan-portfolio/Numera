@@ -1,4 +1,4 @@
-import type { NormalizedStatement, RatioReport } from '@/lib/types';
+import type { NormalizedStatement, RatioCategory, RatioReport } from '@/lib/types';
 
 export interface TrendPoint {
   period: string;
@@ -11,7 +11,7 @@ export interface RatioDatum {
   id: string;
   name: string;
   shortName: string;
-  category: 'liquidity' | 'leverage';
+  category: RatioCategory;
   value: number;
   display: string;
   unit: string;
@@ -110,9 +110,25 @@ export function buildTrendData(income: NormalizedStatement | null): TrendPoint[]
   }));
 }
 
-export function buildRatioComparisonData(report: RatioReport): RatioDatum[] {
+export function buildRatioComparisonData(report: RatioReport, selectedIds?: string[]): RatioDatum[] {
   const byId = new Map(report.ratios.map((ratio) => [ratio.id, ratio]));
   const data: RatioDatum[] = [];
+  if (selectedIds?.length) {
+    for (const id of selectedIds) {
+      const ratio = byId.get(id);
+      if (!ratio || ratio.value === null) continue;
+      data.push({
+        id: ratio.id,
+        name: ratio.name,
+        shortName: ratio.name,
+        category: ratio.category,
+        value: ratio.unit === 'percent' ? ratio.value / 100 : ratio.value,
+        display: ratio.display,
+        unit: ratio.unit,
+      });
+    }
+    return data;
+  }
   for (const spec of COMPARISON_SPECS) {
     const ratio = byId.get(spec.id);
     if (!ratio || ratio.value === null) continue;
@@ -136,16 +152,51 @@ const RATIO_TREND_SPECS: { id: string; label: string; color: string }[] = [
   { id: 'return-on-equity', label: 'ROE', color: CHART_COLORS.roe },
 ];
 
-export function buildRatioTrendData(reports: RatioReport[]): { data: RatioTrendPoint[]; series: RatioTrendSeries[] } {
+export const CUSTOM_SERIES_PALETTE = [
+  CHART_COLORS.roe,
+  CHART_COLORS.revenue,
+  CHART_COLORS.netIncome,
+  CHART_COLORS.grossProfit,
+  CHART_COLORS.cogs,
+  CHART_COLORS.liquidity,
+  CHART_COLORS.leverage,
+  CHART_COLORS.opex,
+];
+
+function ratioNameLookup(reports: RatioReport[]): Map<string, string> {
+  const names = new Map<string, string>();
+  for (const report of reports) {
+    for (const ratio of report.ratios) {
+      if (!names.has(ratio.id)) names.set(ratio.id, ratio.name);
+    }
+  }
+  return names;
+}
+
+export function buildRatioTrendData(
+  reports: RatioReport[],
+  selectedIds?: string[]
+): { data: RatioTrendPoint[]; series: RatioTrendSeries[] } {
+  const nameById = ratioNameLookup(reports);
+  let specs: { id: string; label: string; color: string }[];
+  if (selectedIds?.length) {
+    specs = selectedIds.map((id, index) => ({
+      id,
+      label: nameById.get(id) ?? id,
+      color: CUSTOM_SERIES_PALETTE[index % CUSTOM_SERIES_PALETTE.length],
+    }));
+  } else {
+    specs = RATIO_TREND_SPECS;
+  }
   const data: RatioTrendPoint[] = reports.map((report) => {
     const byId = new Map(report.ratios.map((ratio) => [ratio.id, ratio]));
     const point: RatioTrendPoint = { period: report.period };
-    for (const spec of RATIO_TREND_SPECS) {
+    for (const spec of specs) {
       point[spec.label] = byId.get(spec.id)?.value ?? null;
     }
     return point;
   });
-  const series: RatioTrendSeries[] = RATIO_TREND_SPECS.map((spec) => ({
+  const series: RatioTrendSeries[] = specs.map((spec) => ({
     key: spec.label,
     label: spec.label,
     color: spec.color,
@@ -196,4 +247,109 @@ export function buildCommonSizeData(income: NormalizedStatement | null): CommonS
     });
   }
   return points;
+}
+
+export interface DuPontPoint {
+  period: string;
+  netMargin: number | null;
+  assetTurnover: number | null;
+  equityMultiplier: number | null;
+  roe: number | null;
+}
+
+export function buildDuPontData(reports: RatioReport[]): DuPontPoint[] {
+  return [...reports]
+    .sort((a, b) => periodSortKey(a.period) - periodSortKey(b.period) || a.period.localeCompare(b.period))
+    .map((report) => {
+      const byId = new Map(report.ratios.map((ratio) => [ratio.id, ratio]));
+      return {
+        period: report.period,
+        netMargin: byId.get('net-profit-margin')?.value ?? null,
+        assetTurnover: byId.get('asset-turnover')?.value ?? null,
+        equityMultiplier: byId.get('debt-to-equity')?.value === null || byId.get('debt-to-equity') === undefined
+          ? null
+          : 1 + (byId.get('debt-to-equity')?.value ?? 0),
+        roe: byId.get('return-on-equity')?.value ?? null,
+      };
+    });
+}
+
+export interface CapitalStructurePoint {
+  period: string;
+  Liabilities: number | null;
+  Equity: number | null;
+}
+
+export function buildCapitalStructureData(balance: NormalizedStatement | null): CapitalStructurePoint[] {
+  if (!balance) return [];
+  return sortPeriodsAscending(balance.periods).map((period) => ({
+    period,
+    Liabilities: periodValue(balance, 'total_liabilities', period),
+    Equity: periodValue(balance, 'total_equity', period),
+  }));
+}
+
+export interface WorkingCapitalPoint {
+  period: string;
+  arDays: number | null;
+  inventoryDays: number | null;
+  dirDays: number | null;
+}
+
+export function buildWorkingCapitalData(reports: RatioReport[]): WorkingCapitalPoint[] {
+  return [...reports]
+    .sort((a, b) => periodSortKey(a.period) - periodSortKey(b.period) || a.period.localeCompare(b.period))
+    .map((report) => {
+      const byId = new Map(report.ratios.map((ratio) => [ratio.id, ratio]));
+      return {
+        period: report.period,
+        arDays: byId.get('ar-days')?.value ?? null,
+        inventoryDays: byId.get('inventory-days')?.value ?? null,
+        dirDays: byId.get('defensive-interval-ratio')?.value ?? null,
+      };
+    });
+}
+
+export interface HeatCell {
+  period: string;
+  display: string;
+  direction: 'up' | 'down' | 'flat' | null;
+}
+
+export interface HeatRow {
+  id: string;
+  label: string;
+  cells: HeatCell[];
+}
+
+const DIRECTION_EPSILON = 1e-6;
+
+export function buildHeatTableData(reports: RatioReport[], selectedIds: string[]): HeatRow[] {
+  if (!selectedIds.length) return [];
+  const nameById = ratioNameLookup(reports);
+  const sorted = [...reports].sort(
+    (a, b) => periodSortKey(a.period) - periodSortKey(b.period) || a.period.localeCompare(b.period)
+  );
+  const byPeriodId = new Map<string, Map<string, RatioReport['ratios'][number]>>();
+  for (const report of sorted) {
+    byPeriodId.set(report.period, new Map(report.ratios.map((ratio) => [ratio.id, ratio])));
+  }
+  const periods = sorted.map((report) => report.period);
+  return selectedIds.map((id) => {
+    const cells: HeatCell[] = [];
+    let previous: number | null = null;
+    for (const period of periods) {
+      const ratio = byPeriodId.get(period)?.get(id);
+      const value = ratio?.value ?? null;
+      let direction: HeatCell['direction'] = null;
+      if (value !== null && previous !== null) {
+        if (value - previous > DIRECTION_EPSILON) direction = 'up';
+        else if (previous - value > DIRECTION_EPSILON) direction = 'down';
+        else direction = 'flat';
+      }
+      cells.push({ period, display: ratio?.display ?? '—', direction });
+      previous = value;
+    }
+    return { id, label: nameById.get(id) ?? id, cells };
+  });
 }

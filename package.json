@@ -1,6 +1,6 @@
 {
   "name": "numera",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Ingest financial statements, verify the balance sheet, run vertical and horizontal analysis, and compute the full CFI ratio suite with transparent solutions.",
   "private": true,
   "license": "MIT",
