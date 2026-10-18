@@ -33,6 +33,16 @@ describe('financial health summary', () => {
     expect(profitability.points.map((point) => point.label)).toContain('Return on Equity (ROE)');
   });
 
+  it('cites recognized rules of thumb rather than absolute targets', () => {
+    const liquidity = report.insights.find((insight) => insight.id === 'liquidity')!;
+    expect(liquidity.summary).toContain('2× current liabilities');
+    expect(liquidity.summary).toContain('industry');
+    const leverage = report.insights.find((insight) => insight.id === 'leverage')!;
+    expect(leverage.tone).toBe('positive');
+    const coverage = report.insights.find((insight) => insight.id === 'coverage')!;
+    expect(coverage.summary).toContain('1.0×');
+  });
+
   it('reports growth using period-over-period changes', () => {
     const growth = report.insights.find((insight) => insight.id === 'growth')!;
     const revenue = growth.points.find((point) => point.label === 'Revenue growth')!;

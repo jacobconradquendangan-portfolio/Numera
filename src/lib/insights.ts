@@ -32,6 +32,26 @@ interface BuildInput {
   analysis?: AnalysisResult;
 }
 
+const RULES = {
+  currentRatioComfort: 2,
+  quickRatioComfort: 1,
+  netMarginStrong: 10,
+  netMarginLow: 5,
+  roeStrong: 15,
+  debtToEquityHigh: 2,
+  debtRatioHigh: 60,
+  equityRatioComfort: 50,
+  leverageShiftWatch: 0.1,
+  tieComfort: 3,
+  tieThin: 2,
+  ocfRatioComfort: 1,
+  ocfRatioThin: 0.5,
+  arDaysStretched: 60,
+  growthFlat: 0.5,
+};
+
+const INDUSTRY_CAVEAT = 'reference levels are directional and vary by industry.';
+
 function indexById(report: RatioReport): Map<string, RatioResult> {
   return new Map(report.ratios.map((ratio) => [ratio.id, ratio]));
 }
@@ -91,16 +111,16 @@ function liquidityInsight(byId: Map<string, RatioResult>): Insight | null {
     point(byId, 'cash-ratio', 'Immediate cash and equivalents against current liabilities.'),
   ].filter((entry): entry is InsightPoint => entry !== null);
   let tone: InsightTone = 'neutral';
-  let summary = 'Short-term liquidity is adequate, with coverage near the one-times guideline.';
-  if (current !== null && current >= 2) {
+  let summary = `Short-term liquidity is adequate, though below the ${RULES.currentRatioComfort}:1 textbook rule of thumb (${INDUSTRY_CAVEAT})`;
+  if (current !== null && current >= RULES.currentRatioComfort) {
     tone = 'positive';
-    summary = 'Comfortable short-term liquidity, with current assets well above near-term obligations.';
+    summary = `Comfortable short-term liquidity: current assets are at or above ${RULES.currentRatioComfort}× current liabilities, the long-standing textbook rule of thumb (${INDUSTRY_CAVEAT})`;
   } else if (current !== null && current < 1) {
     tone = 'watch';
-    summary = 'Liquidity pressure: current liabilities exceed current assets.';
-  } else if (quick !== null && quick < 1) {
+    summary = 'Liquidity pressure: current liabilities exceed current assets (below 1.0×).';
+  } else if (quick !== null && quick < RULES.quickRatioComfort) {
     tone = 'watch';
-    summary = 'Coverage leans on inventory; quick liquidity is below the one-times guideline.';
+    summary = 'Coverage leans on inventory: the quick (acid-test) ratio is below the 1:1 rule of thumb.';
   }
   return { id: 'liquidity', title: 'Liquidity', tone, summary, points };
 }
@@ -117,43 +137,56 @@ function profitabilityInsight(byId: Map<string, RatioResult>, prior: RatioReport
     point(byId, 'gross-margin', 'Share of revenue left after direct costs.'),
     point(byId, 'operating-margin', 'Operating profit as a share of revenue.'),
     point(byId, 'net-profit-margin', directionText(marginShift, 'Net margin expanded versus the prior period.', 'Net margin compressed versus the prior period.', 'Net margin broadly stable.')),
-    point(byId, 'return-on-equity', roe !== null && roe >= 15 ? 'Returns to shareholders exceed the 15% reference level.' : 'Returns to shareholders relative to equity.'),
-    point(byId, 'return-on-assets', 'Earnings generated per unit of assets.'),
+    point(byId, 'return-on-equity', roe !== null && roe >= RULES.roeStrong ? `Returns to shareholders are at or above the ${RULES.roeStrong}% level often cited as strong.` : 'Returns to shareholders relative to equity; varies widely by industry and leverage.'),
+    point(byId, 'return-on-assets', 'Earnings generated per unit of assets; asset-heavy sectors naturally run lower.'),
   ].filter((entry): entry is InsightPoint => entry !== null);
   let tone: InsightTone = 'neutral';
   let summary = 'Profitability is positive but modest.';
-  if (net !== null && net >= 10) {
-    tone = 'positive';
-    summary = 'Strong profitability, with net income retaining a healthy share of revenue.';
-  } else if (net !== null && net < 0) {
+  if (net !== null && net < 0) {
     tone = 'watch';
     summary = 'The business is loss-making on a net basis for this period.';
-  } else if (net !== null && net < 3) {
+  } else if (net !== null && net < RULES.netMarginLow) {
     tone = 'watch';
-    summary = 'Thin net margins leave little cushion for cost or pricing pressure.';
+    summary = `Thin net margin, below the ${RULES.netMarginLow}% level often used as a low-margin marker; margins vary widely by industry.`;
+  } else if (net !== null && net >= RULES.netMarginStrong) {
+    tone = 'positive';
+    summary = `Strong profitability: net margin above the ${RULES.netMarginStrong}% level commonly cited as healthy (net margins are industry-specific).`;
   }
-  if (roe !== null && roe >= 15 && tone !== 'watch') tone = 'positive';
+  if (roe !== null && roe >= RULES.roeStrong && tone === 'neutral') {
+    tone = 'positive';
+    summary = `Returns to shareholders are at or above the ${RULES.roeStrong}% level often cited as strong (ROE varies widely by industry and leverage).`;
+  }
   return { id: 'profitability', title: 'Profitability', tone, summary, points };
 }
 
-function leverageInsight(byId: Map<string, RatioResult>): Insight | null {
+function leverageInsight(byId: Map<string, RatioResult>, prior: RatioReport | null): Insight | null {
   const de = num(byId, 'debt-to-equity');
   const debtRatio = num(byId, 'debt-ratio');
   const equityRatio = num(byId, 'equity-ratio');
   if (de === null && debtRatio === null && equityRatio === null) return null;
+  const deShift = delta(byId, prior, 'debt-to-equity');
   const points = [
-    point(byId, 'debt-to-equity', 'Debt relative to shareholders’ equity.'),
+    point(byId, 'debt-to-equity', 'Debt relative to shareholders’ equity; acceptable levels are industry-specific.'),
     point(byId, 'debt-ratio', 'Share of assets financed by liabilities.'),
     point(byId, 'equity-ratio', 'Share of assets financed by equity.'),
   ].filter((entry): entry is InsightPoint => entry !== null);
   let tone: InsightTone = 'neutral';
   let summary = 'Capital structure is moderately leveraged.';
-  if (de !== null && de <= 0.5) {
-    tone = 'positive';
-    summary = 'Conservative capital structure, with equity comfortably outweighing debt.';
-  } else if ((de !== null && de > 1) || (debtRatio !== null && debtRatio > 60)) {
+  if (de !== null && de > RULES.debtToEquityHigh) {
     tone = 'watch';
-    summary = 'Elevated leverage increases sensitivity to interest rates and earnings swings.';
+    summary = `High leverage: debt exceeds ${RULES.debtToEquityHigh}× equity, a level often treated as a high-leverage marker; acceptable levels are industry-specific.`;
+  } else if (debtRatio !== null && debtRatio > RULES.debtRatioHigh) {
+    tone = 'watch';
+    summary = `Liabilities finance more than ${RULES.debtRatioHigh}% of assets, leaving a thinner equity cushion.`;
+  } else if (deShift !== null && deShift > RULES.leverageShiftWatch) {
+    tone = 'watch';
+    summary = 'Leverage increased versus the prior period; rising debt raises sensitivity to interest rates and earnings swings.';
+  } else if (
+    (de !== null && de <= 1) ||
+    (equityRatio !== null && equityRatio >= RULES.equityRatioComfort)
+  ) {
+    tone = 'positive';
+    summary = 'Conservative capital structure: equity covers at least half of assets and debt does not exceed equity.';
   }
   return { id: 'leverage', title: 'Leverage & solvency', tone, summary, points };
 }
@@ -168,12 +201,12 @@ function coverageInsight(byId: Map<string, RatioResult>): Insight | null {
   ].filter((entry): entry is InsightPoint => entry !== null);
   let tone: InsightTone = 'neutral';
   let summary = 'Interest obligations are covered with a modest margin.';
-  if (tie !== null && tie >= 3) {
+  if (tie !== null && tie >= RULES.tieComfort) {
     tone = 'positive';
-    summary = 'Earnings cover interest charges several times over.';
-  } else if (tie !== null && tie < 1.5) {
+    summary = `Earnings cover interest charges ${RULES.tieComfort}× or more; lenders typically want coverage meaningfully above 1.0×.`;
+  } else if (tie !== null && tie < RULES.tieThin) {
     tone = 'watch';
-    summary = 'Interest cover is thin; a decline in earnings would strain debt service.';
+    summary = `Interest cover is below ${RULES.tieThin}×, a level commonly used as a minimum in lending; an earnings decline would strain debt service.`;
   }
   return { id: 'coverage', title: 'Interest coverage', tone, summary, points };
 }
@@ -185,12 +218,13 @@ function efficiencyInsight(byId: Map<string, RatioResult>, prior: RatioReport | 
   if (asset === null && arDays === null && inventoryDays === null) return null;
   const arShift = delta(byId, prior, 'ar-days');
   const inventoryShift = delta(byId, prior, 'inventory-days');
+  const arStretched = arDays !== null && arDays > RULES.arDaysStretched;
   const points = [
-    point(byId, 'asset-turnover', 'Revenue generated per unit of assets.'),
-    point(byId, 'ar-days', directionText(arShift, 'Collection slowed versus the prior period.', 'Collection improved versus the prior period.', 'Collection period broadly stable.')),
+    point(byId, 'asset-turnover', 'Revenue generated per unit of assets; asset-heavy industries naturally run lower.'),
+    point(byId, 'ar-days', arStretched ? 'Receivable days are well beyond typical net-30 credit terms.' : directionText(arShift, 'Collection slowed versus the prior period.', 'Collection improved versus the prior period.', 'Collection period broadly stable.')),
     point(byId, 'inventory-days', directionText(inventoryShift, 'Inventory is turning over more slowly.', 'Inventory is moving faster.', 'Inventory turnover broadly stable.')),
   ].filter((entry): entry is InsightPoint => entry !== null);
-  const slowerCollection = arShift !== null && arShift > 0;
+  const slowerCollection = arStretched || (arShift !== null && arShift > 0);
   const slowerInventory = inventoryShift !== null && inventoryShift > 0;
   const tone: InsightTone = slowerCollection || slowerInventory ? 'watch' : 'neutral';
   const softened =
@@ -211,17 +245,23 @@ function cashFlowInsight(byId: Map<string, RatioResult>): Insight | null {
   const capex = num(byId, 'capex-to-operating-cash');
   if (ocfRatio === null && capex === null) return null;
   const points = [
-    point(byId, 'operating-cash-flow-ratio', 'Operating cash flow against current liabilities.'),
-    point(byId, 'capex-to-operating-cash', 'Share of operating cash flow reinvested in capital expenditure.'),
+    point(byId, 'operating-cash-flow-ratio', 'Operating cash flow against current liabilities; 1.0× is the level generally regarded as adequate.'),
+    point(
+      byId,
+      'capex-to-operating-cash',
+      capex !== null && capex > 1
+        ? 'Investment exceeds operating cash flow, so growth is being financed externally.'
+        : 'Share of operating cash flow reinvested in capital expenditure.'
+    ),
   ].filter((entry): entry is InsightPoint => entry !== null);
   let tone: InsightTone = 'neutral';
   let summary = 'Cash generation covers interest and reinvestment with a modest buffer.';
-  if (ocfRatio !== null && ocfRatio >= 1) {
+  if (ocfRatio !== null && ocfRatio >= RULES.ocfRatioComfort) {
     tone = 'positive';
-    summary = 'Operating cash flow comfortably covers current liabilities.';
-  } else if (ocfRatio !== null && ocfRatio < 0.5) {
+    summary = 'Operating cash flow covers current liabilities at or above the 1.0× level generally regarded as adequate.';
+  } else if (ocfRatio !== null && ocfRatio < RULES.ocfRatioThin) {
     tone = 'watch';
-    summary = 'Operating cash flow is weak relative to current liabilities.';
+    summary = `Operating cash flow is weak relative to current liabilities (below ${RULES.ocfRatioThin}×).`;
   }
   return { id: 'cash-flow', title: 'Cash flow', tone, summary, points };
 }
@@ -261,7 +301,7 @@ function growthInsight(
   const revPct = revenue && revenue.percentChange !== null ? revenue.percentChange : null;
   const incPct = netIncome && netIncome.percentChange !== null ? netIncome.percentChange : null;
   const direction = (value: number | null): boolean | null =>
-    value === null ? null : value > 1 ? true : value < -1 ? false : null;
+    value === null ? null : value > RULES.growthFlat ? true : value < -RULES.growthFlat ? false : null;
   const revDir = direction(revPct);
   const incDir = direction(incPct);
   let tone: InsightTone = 'neutral';
@@ -314,7 +354,7 @@ export function buildInsights({ report, history = [], analysis }: BuildInput): I
   const insights = [
     liquidityInsight(byId),
     profitabilityInsight(byId, prior),
-    leverageInsight(byId),
+    leverageInsight(byId, prior),
     coverageInsight(byId),
     efficiencyInsight(byId, prior),
     cashFlowInsight(byId),
@@ -334,7 +374,7 @@ export function buildInsights({ report, history = [], analysis }: BuildInput): I
   } else if (tone === 'positive') {
     verdict = `Broadly healthy — ${strengths} measure${strengths === 1 ? '' : 's'} stand out positively and nothing is flagged for concern.`;
   } else if (tone === 'watch') {
-    verdict = `Several warning signs — ${watches} measure${watches === 1 ? '' : 's'} warrant attention before drawing comfort.`;
+    verdict = `Several warning signs — ${watches} measure${watches === 1 ? '' : 's'} warrant${watches === 1 ? 's' : ''} attention before drawing comfort.`;
   } else {
     verdict = `Mixed picture — ${strengths} strength${strengths === 1 ? '' : 's'} tempered by ${watches} area${watches === 1 ? '' : 's'} to watch.`;
   }

@@ -7,7 +7,7 @@
 [![CI](https://github.com/jacobconradquendangan-portfolio/Numera/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jacobconradquendangan-portfolio/Numera/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-8f6110?style=flat-square)](LICENSE)
 ![Version](https://img.shields.io/badge/version-1.1.0-8f6110?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-112_passing-357a3d?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-114_passing-357a3d?style=flat-square)
 ![Next.js](https://img.shields.io/badge/Next.js-15-23211a?style=flat-square&logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-23211a?style=flat-square&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-23211a?style=flat-square&logo=typescript&logoColor=3178C6)
