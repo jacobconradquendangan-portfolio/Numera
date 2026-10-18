@@ -193,15 +193,15 @@ describe('buildDuPontData', () => {
     const report = dashboardReports.find((entry) => entry.period === '2025')!;
     expect(row2025.netMargin).toBeCloseTo(ratioValue(report, 'net-profit-margin'), 6);
     expect(row2025.assetTurnover).toBeCloseTo(ratioValue(report, 'asset-turnover'), 6);
-    expect(row2025.equityMultiplier).toBeCloseTo(1 + ratioValue(report, 'debt-to-equity'), 6);
+    expect(row2025.financialLeverage).toBeCloseTo(1 + ratioValue(report, 'debt-to-equity'), 6);
     expect(row2025.roe).toBeCloseTo(ratioValue(report, 'return-on-equity'), 6);
   });
 
   it('stays within two points of the reported ROE when phases are present', () => {
     const data = buildDuPontData(dashboardReports);
     for (const row of data) {
-      if (row.netMargin === null || row.assetTurnover === null || row.equityMultiplier === null) continue;
-      const product = (row.netMargin / 100) * row.assetTurnover * row.equityMultiplier * 100;
+      if (row.netMargin === null || row.assetTurnover === null || row.financialLeverage === null) continue;
+      const product = (row.netMargin / 100) * row.assetTurnover * row.financialLeverage * 100;
       expect(product).toBeCloseTo(row.roe ?? NaN, -1);
     }
   });
@@ -222,7 +222,7 @@ describe('buildDuPontData', () => {
     const data = buildDuPontData(computeRatiosForAllPeriods(document));
     expect(data[1].netMargin).toBeCloseTo(10, 6);
     expect(data[1].assetTurnover).toBeNull();
-    expect(data[1].equityMultiplier).toBeNull();
+    expect(data[1].financialLeverage).toBeNull();
   });
 });
 

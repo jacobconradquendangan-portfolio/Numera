@@ -1,8 +1,8 @@
 'use client';
 
+import { Fragment } from 'react';
 import type { DuPontPoint } from '@/lib/chartData';
-import { formatUnitValue } from '@/lib/format';
-import { cx } from '@/lib/format';
+import { cx, formatUnitValue, type DisplayUnit } from '@/lib/format';
 
 interface DuPontPanelsProps {
   data: DuPontPoint[];
@@ -11,16 +11,35 @@ interface DuPontPanelsProps {
 
 interface Factor {
   label: string;
-  symbol: string;
-  value: number | null;
-  unit: string;
+  role: string;
+  unit: DisplayUnit;
+  pick: (row: DuPontPoint) => number | null;
 }
 
-const FACTORS: { label: string; symbol: string; unit: string; pick: (row: DuPontPoint) => number | null }[] = [
-  { label: 'Net profit margin', symbol: '×', unit: 'percent', pick: (row) => row.netMargin },
-  { label: 'Asset turnover', symbol: '×', unit: 'times', pick: (row) => row.assetTurnover },
-  { label: 'Equity multiplier', symbol: '=', unit: 'times', pick: (row) => row.equityMultiplier },
+const FACTORS: Factor[] = [
+  {
+    label: 'Net profit margin',
+    role: 'Profit kept per sales dollar',
+    unit: 'percent',
+    pick: (row) => row.netMargin,
+  },
+  {
+    label: 'Asset turnover',
+    role: 'Sales generated per asset dollar',
+    unit: 'times',
+    pick: (row) => row.assetTurnover,
+  },
+  {
+    label: 'Financial leverage',
+    role: 'Assets funded per equity dollar',
+    unit: 'times',
+    pick: (row) => row.financialLeverage,
+  },
 ];
+
+function display(value: number | null, unit: DisplayUnit): string {
+  return value === null ? '—' : formatUnitValue(value, unit);
+}
 
 export default function DuPontPanels({ data, selectedPeriod }: DuPontPanelsProps) {
   if (!data.length) {
@@ -32,78 +51,162 @@ export default function DuPontPanels({ data, selectedPeriod }: DuPontPanelsProps
   }
 
   const focused = data.find((row) => row.period === selectedPeriod) ?? data[data.length - 1];
-  const factors: Factor[] = FACTORS.map((factor) => ({
-    label: factor.label,
-    symbol: factor.symbol,
-    value: factor.pick(focused),
-    unit: factor.unit,
-  }));
+  const substitution = [
+    display(focused.netMargin, 'percent'),
+    display(focused.assetTurnover, 'times'),
+    display(focused.financialLeverage, 'times'),
+  ].join(' × ');
+  const resolved = FACTORS.every((factor) => factor.pick(focused) !== null) && focused.roe !== null;
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        {factors.map((factor) => (
-          <div key={factor.label} className="flex items-center gap-3">
-            <div className="min-w-[7.5rem] rounded-xl border border-line bg-panel2 px-3 py-2.5">
-              <p className="rule-label whitespace-nowrap">{factor.label}</p>
-              <p className="tabular mt-1 text-lg text-paper">
-                {factor.value === null ? '—' : formatUnitValue(factor.value, factor.unit)}
-              </p>
-            </div>
-            <span className="font-display text-xl text-accent">{factor.symbol}</span>
-          </div>
-        ))}
-        <div className="min-w-[7.5rem] rounded-xl border border-accent/30 bg-accent/[0.06] px-3 py-2.5">
-          <p className="rule-label whitespace-nowrap">Return on equity</p>
-          <p className="tabular mt-1 text-lg text-accent">
-            {focused.roe === null ? '—' : formatUnitValue(focused.roe, 'percent')}
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <div className="rounded-xl border border-line bg-panel2/50 p-4 sm:p-5">
+        <p className="rule-label">
+          Return on equity = net profit margin × asset turnover × financial leverage
+        </p>
 
-      <p className="tabular text-sm text-muted">
-        {focused.period} · equity multiplier derived as 1 + Debt-to-Equity · missing inputs show as dashes
-      </p>
+        <div className="mt-3.5 flex flex-wrap items-stretch gap-x-2.5 gap-y-3">
+          {FACTORS.map((factor, index) => (
+            <Fragment key={factor.label}>
+              {index > 0 ? (
+                <span className="grid place-items-center px-1 font-display text-2xl text-accentdim" aria-hidden>
+                  ×
+                </span>
+              ) : null}
+              <div className="min-w-[9.5rem] flex-1 rounded-lg border border-line bg-panel px-4 py-3">
+                <p className="rule-label">{factor.label}</p>
+                <p
+                  className={cx(
+                    'tabular mt-1.5 whitespace-nowrap text-2xl leading-none',
+                    factor.pick(focused) === null ? 'text-faint' : 'text-paper'
+                  )}
+                >
+                  {display(factor.pick(focused), factor.unit)}
+                </p>
+                <p className="mt-2.5 text-xs text-faint">{factor.role}</p>
+              </div>
+            </Fragment>
+          ))}
+
+          <span className="grid place-items-center px-1 font-display text-2xl text-accent" aria-hidden>
+            =
+          </span>
+          <div className="min-w-[9.5rem] flex-1 rounded-lg border border-accent/40 bg-accent/[0.07] px-4 py-3">
+            <p className="rule-label text-accentdim">Return on equity</p>
+            <p
+              className={cx(
+                'tabular mt-1.5 whitespace-nowrap text-2xl leading-none',
+                focused.roe === null ? 'text-faint' : 'text-accent'
+              )}
+            >
+              {display(focused.roe, 'percent')}
+            </p>
+            <p className="mt-2.5 text-xs text-faint">Shareholder return · {focused.period}</p>
+          </div>
+        </div>
+
+        <p className="tabular mt-4 border-t border-line/70 pt-3 text-xs text-muted">
+          Substitution — {substitution} = {display(focused.roe, 'percent')}
+          {resolved ? '' : ' · incomplete inputs shown as dashes'}
+        </p>
+        <p className="rule-label mt-1.5 text-faint">financial leverage derived as 1 + debt-to-equity</p>
+      </div>
 
       {data.length > 1 ? (
         <div>
           <p className="rule-label mb-2">Across periods</p>
-          <table className="w-full min-w-[28rem] border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="rule-label border-b border-line pb-2 text-left font-normal">Period</th>
-                {FACTORS.map((factor) => (
-                  <th key={factor.label} className="rule-label border-b border-line pb-2 px-3 text-right font-normal">
-                    {factor.label}
-                  </th>
-                ))}
-                <th className="rule-label border-b border-line pb-2 px-3 text-right font-normal">ROE</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((row) => (
-                <tr
-                  key={row.period}
-                  className={cx(row.period === focused.period && 'font-medium')}
-                >
-                  <td className="tabular border-b border-line/60 py-2 text-paper">{row.period}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[30rem] border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="rule-label border-b border-line pb-2 text-left font-normal">Period</th>
                   {FACTORS.map((factor) => (
-                    <td
+                    <th
                       key={factor.label}
-                      className="tabular border-b border-line/60 py-2 px-3 text-right text-muted"
+                      className="rule-label border-b border-line border-l border-l-line/50 px-3 pb-2 text-right font-normal"
                     >
-                      {factor.pick(row) === null ? '—' : formatUnitValue(factor.pick(row)!, factor.unit)}
-                    </td>
+                      {factor.label}
+                    </th>
                   ))}
-                  <td className="tabular border-b border-line/60 py-2 px-3 text-right text-accent">
-                    {row.roe === null ? '—' : formatUnitValue(row.roe, 'percent')}
-                  </td>
+                  <th className="rule-label border-b border-line border-l border-l-line/50 px-3 pb-2 text-right font-normal">
+                    Return on equity
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.map((row) => {
+                  const isFocused = row.period === focused.period;
+                  return (
+                    <tr key={row.period} className={cx(isFocused && 'bg-accent/[0.05]')}>
+                      <td
+                        className={cx(
+                          'tabular border-b border-line/60 py-2',
+                          isFocused ? 'font-medium text-paper' : 'text-muted'
+                        )}
+                      >
+                        {row.period}
+                      </td>
+                      {FACTORS.map((factor) => (
+                        <td
+                          key={factor.label}
+                          className="tabular border-b border-line/60 border-l border-l-line/40 px-3 py-2 text-right text-muted"
+                        >
+                          {display(factor.pick(row), factor.unit)}
+                        </td>
+                      ))}
+                      <td
+                        className={cx(
+                          'tabular border-b border-line/60 border-l border-l-line/40 px-3 py-2 text-right',
+                          isFocused ? 'font-medium text-accent' : 'text-accent/80'
+                        )}
+                      >
+                        {display(row.roe, 'percent')}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
+
+      <div className="space-y-4 border-t border-line pt-4">
+        <div>
+          <p className="rule-label">Root-cause diagnostics</p>
+          <p className="mt-1.5 max-w-[68ch] text-sm leading-relaxed text-muted">
+            If ROE drops or spikes, the decomposition shows why at a glance — is the company making less profit per
+            dollar of sales (margin), utilizing its assets less efficiently (turnover), or relying more heavily on debt
+            (leverage)?
+          </p>
+        </div>
+        <div>
+          <p className="rule-label">Strategy alignment</p>
+          <p className="mt-1.5 max-w-[68ch] text-sm leading-relaxed text-muted">
+            Three different departments meet on one screen:
+          </p>
+          <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div className="border-l-2 border-l-line2 pl-3">
+              <dt className="text-sm text-paper">Margin</dt>
+              <dd className="mt-1 text-xs leading-relaxed text-faint">
+                Pricing power and cost control — operations &amp; pricing
+              </dd>
+            </div>
+            <div className="border-l-2 border-l-line2 pl-3">
+              <dt className="text-sm text-paper">Turnover</dt>
+              <dd className="mt-1 text-xs leading-relaxed text-faint">
+                Asset and working-capital management — supply chain &amp; sales
+              </dd>
+            </div>
+            <div className="border-l-2 border-l-line2 pl-3">
+              <dt className="text-sm text-paper">Leverage</dt>
+              <dd className="mt-1 text-xs leading-relaxed text-faint">
+                Capital structure and risk appetite — treasury &amp; finance
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
     </div>
   );
 }

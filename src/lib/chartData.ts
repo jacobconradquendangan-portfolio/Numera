@@ -253,7 +253,7 @@ export interface DuPontPoint {
   period: string;
   netMargin: number | null;
   assetTurnover: number | null;
-  equityMultiplier: number | null;
+  financialLeverage: number | null;
   roe: number | null;
 }
 
@@ -266,7 +266,7 @@ export function buildDuPontData(reports: RatioReport[]): DuPontPoint[] {
         period: report.period,
         netMargin: byId.get('net-profit-margin')?.value ?? null,
         assetTurnover: byId.get('asset-turnover')?.value ?? null,
-        equityMultiplier: byId.get('debt-to-equity')?.value === null || byId.get('debt-to-equity') === undefined
+        financialLeverage: byId.get('debt-to-equity')?.value === null || byId.get('debt-to-equity') === undefined
           ? null
           : 1 + (byId.get('debt-to-equity')?.value ?? 0),
         roe: byId.get('return-on-equity')?.value ?? null,
