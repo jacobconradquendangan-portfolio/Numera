@@ -398,7 +398,7 @@ export function buildInsights({ report, history = [], analysis }: BuildInput): I
   } else if (tone === 'positive') {
     verdict = `Broadly healthy — ${strengths} measure${strengths === 1 ? '' : 's'} stand out positively and nothing is flagged for concern.`;
   } else if (tone === 'watch') {
-    verdict = `Several warning signs — ${watches} measure${watches === 1 ? '' : 's'} warrant${watches === 1 ? 's' : ''} attention before drawing comfort.`;
+    verdict = `${watches} area${watches === 1 ? '' : 's'} to review — worth a closer look before relying on this period.`;
   } else {
     verdict = `Mixed picture — ${strengths} strength${strengths === 1 ? '' : 's'} tempered by ${watches} area${watches === 1 ? '' : 's'} to watch.`;
   }
