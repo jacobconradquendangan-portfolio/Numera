@@ -81,7 +81,7 @@ export default function RatioHeatTable({ rows, selectedPeriod }: RatioHeatTableP
   if (!rows.length) {
     return (
       <div className="flex h-44 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-line text-center">
-        <p className="font-display text-lg text-paper">No ratios on the blotter</p>
+        <p className="font-display text-lg text-paper">No ratios on the heat table</p>
         <p className="rule-label">pick ratios under Ratios to lay them across periods</p>
       </div>
     );
