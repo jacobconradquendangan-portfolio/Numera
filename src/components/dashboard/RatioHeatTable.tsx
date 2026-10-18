@@ -65,6 +65,28 @@ function sparkPath(values: (number | null)[], width: number, height: number): st
     .join(' ');
 }
 
+function sparkPoint(values: (number | null)[], index: number, width: number, height: number): { x: number; y: number } | null {
+  const value = values[index];
+  if (value === null || !Number.isFinite(value)) return null;
+  const pts = values
+    .map((v, i) => ({ v, i }))
+    .filter((e): e is { v: number; i: number } => e.v !== null && Number.isFinite(e.v));
+  if (!pts.length) return null;
+  const xs = pts.map((e) => e.i);
+  const ys = pts.map((e) => e.v);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const spanX = maxX - minX || 1;
+  const spanY = maxY - minY || Math.max(Math.abs(maxY) * 0.1, 1e-9);
+  const pad = 2;
+  return {
+    x: pad + ((index - minX) / spanX) * (width - pad * 2),
+    y: height - pad - ((value - minY) / spanY) * (height - pad * 2),
+  };
+}
+
 function sparkTone(row: HeatRow): string {
   if (row.deltaTone === 'pos') return '#357a3d';
   if (row.deltaTone === 'neg') return '#b04236';
@@ -139,7 +161,9 @@ export default function RatioHeatTable({ rows, selectedPeriod }: RatioHeatTableP
                   </div>
                 </td>
               </tr>
-              {(grouped.get(group) ?? []).map((row) => (
+              {(grouped.get(group) ?? []).map((row) => {
+                const focusCell = row.cells[focusIndex] ?? null;
+                return (
                 <tr key={row.id} className="hover:bg-panel2/40">
                   <td className="border-b border-line/60 py-2.5 pr-3 align-middle">
                     <div className="flex min-w-0 items-center gap-3">
@@ -149,12 +173,26 @@ export default function RatioHeatTable({ rows, selectedPeriod }: RatioHeatTableP
                         <div className="mt-1 flex items-center gap-2">
                           <svg width="64" height="18" viewBox="0 0 64 18" aria-hidden className="shrink-0">
                             {sparkPath(row.spark, 64, 18) ? (
-                              <path d={sparkPath(row.spark, 64, 18)} fill="none" stroke={sparkTone(row)} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              <>
+                                <path d={sparkPath(row.spark, 64, 18)} fill="none" stroke={sparkTone(row)} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                {focusIndex >= 0 && sparkPoint(row.spark, focusIndex, 64, 18) ? (
+                                  <circle
+                                    cx={sparkPoint(row.spark, focusIndex, 64, 18)!.x}
+                                    cy={sparkPoint(row.spark, focusIndex, 64, 18)!.y}
+                                    r="2.6"
+                                    fill={sparkTone(row)}
+                                    stroke="#fffdf8"
+                                    strokeWidth="1.2"
+                                  />
+                                ) : null}
+                              </>
                             ) : (
                               <line x1="4" y1="9" x2="60" y2="9" stroke="#cdc1a2" strokeWidth="1" strokeDasharray="2 3" />
                             )}
                           </svg>
-                          <span className={cx('tabular font-mono text-[0.7rem]', row.latestValue === null ? 'text-faint' : 'text-paper')}>{row.latest}</span>
+                          <span className={cx('tabular font-mono text-[0.7rem]', focusCell?.value === null ? 'text-faint' : 'text-paper')}>
+                            {focusCell?.display ?? row.latest}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -187,7 +225,8 @@ export default function RatioHeatTable({ rows, selectedPeriod }: RatioHeatTableP
                     </span>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </Fragment>
           ))}
         </tbody>
