@@ -15,18 +15,18 @@ interface SupplementalPanelProps {
 const DAY_COUNT_OPTIONS: DayCountBasis[] = [365, 360];
 
 const FIELDS: { key: keyof SupplementalForm; label: string; group: string; hint: string }[] = [
-  { key: 'sharePrice', label: 'Share Price', group: 'Market', hint: 'e.g. 25.40' },
-  { key: 'sharesOutstanding', label: 'Shares Outstanding', group: 'Market', hint: 'e.g. 1,200,000' },
-  { key: 'earningsPerShare', label: 'EPS (override)', group: 'Market', hint: 'optional' },
-  { key: 'marketCapitalization', label: 'Market Cap', group: 'Market', hint: 'optional' },
-  { key: 'enterpriseValue', label: 'Enterprise Value', group: 'Market', hint: 'optional' },
+  { key: 'sharePrice', label: 'Share Price', group: 'Per Share', hint: 'e.g. 25.40' },
+  { key: 'sharesOutstanding', label: 'Shares Outstanding', group: 'Per Share', hint: 'e.g. 1,200,000' },
+  { key: 'earningsPerShare', label: 'EPS (override)', group: 'Per Share', hint: 'optional' },
+  { key: 'marketCapitalization', label: 'Market Cap', group: 'Valuation', hint: 'optional' },
+  { key: 'enterpriseValue', label: 'Enterprise Value', group: 'Valuation', hint: 'optional' },
   { key: 'totalDebt', label: 'Total Debt (override)', group: 'Debt & Cash', hint: 'optional' },
   { key: 'cashAndEquivalents', label: 'Cash (override)', group: 'Debt & Cash', hint: 'optional' },
-  { key: 'ebitda', label: 'EBITDA (override)', group: 'Overrides', hint: 'optional' },
-  { key: 'ebit', label: 'EBIT (override)', group: 'Overrides', hint: 'optional' },
+  { key: 'ebitda', label: 'EBITDA (override)', group: 'Profitability Overrides', hint: 'optional' },
+  { key: 'ebit', label: 'EBIT (override)', group: 'Profitability Overrides', hint: 'optional' },
 ];
 
-const GROUPS = ['Market', 'Debt & Cash', 'Overrides'];
+const GROUPS = ['Per Share', 'Valuation', 'Debt & Cash', 'Profitability Overrides'];
 
 export default function SupplementalPanel({
   values,
