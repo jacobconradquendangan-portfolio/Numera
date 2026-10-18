@@ -43,7 +43,7 @@ export const CHART_COLORS = {
   axis: '#cdc1a2',
   tick: '#6c6555',
   reference: '#cdc1a2',
-  surface: '#fffdf8',
+  surface: '#f4eee0',
   border: '#e4dbc5',
   paper: '#23211a',
 };

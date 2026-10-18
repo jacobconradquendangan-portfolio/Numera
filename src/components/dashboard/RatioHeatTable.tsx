@@ -181,7 +181,7 @@ export default function RatioHeatTable({ rows, selectedPeriod }: RatioHeatTableP
                                     cy={sparkPoint(row.spark, focusIndex, 64, 18)!.y}
                                     r="2.6"
                                     fill={sparkTone(row)}
-                                    stroke="#fffdf8"
+                                    stroke="var(--color-panel)"
                                     strokeWidth="1.2"
                                   />
                                 ) : null}
