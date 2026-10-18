@@ -12,6 +12,12 @@ interface OverviewProps {
   unitMultiplier: number;
 }
 
+interface Kpi {
+  label: string;
+  source: string;
+  value: number | null;
+}
+
 function valueOf(statement: NormalizedStatement | null, category: string, period: string): number | null {
   const item = statement?.lineItems.find((entry) => entry.category === category);
   const value = item?.values[period];
@@ -19,22 +25,24 @@ function valueOf(statement: NormalizedStatement | null, category: string, period
 }
 
 export default function Overview({ validation, income, balance, cashflow, selectedPeriod, unitMultiplier }: OverviewProps) {
-  const figures = [
-    { label: 'Revenue', value: valueOf(income, 'revenue', selectedPeriod) },
-    { label: 'Net Income', value: valueOf(income, 'net_income', selectedPeriod) },
-    { label: 'Total Assets', value: valueOf(balance, 'total_assets', selectedPeriod) },
-    { label: 'Total Liabilities', value: valueOf(balance, 'total_liabilities', selectedPeriod) },
-    { label: "Shareholders' Equity", value: valueOf(balance, 'total_equity', selectedPeriod) },
-    ...(cashflow
-      ? [{ label: 'Operating Cash Flow', value: valueOf(cashflow, 'net_cash_from_operating_activities', selectedPeriod) }]
-      : []),
-  ];
-
+  const period = selectedPeriod;
   const balanced = validation?.balanced ?? null;
-  const scaleNote = unitMultiplier !== 1 ? `×${unitMultiplier.toLocaleString()} units` : 'as reported';
+
+  const figures: Kpi[] = [
+    income ? { label: 'Revenue', source: 'Income statement', value: valueOf(income, 'revenue', period) } : null,
+    income ? { label: 'Net income', source: 'Income statement', value: valueOf(income, 'net_income', period) } : null,
+    balance ? { label: 'Total assets', source: 'Balance sheet', value: valueOf(balance, 'total_assets', period) } : null,
+    balance ? { label: 'Total liabilities', source: 'Balance sheet', value: valueOf(balance, 'total_liabilities', period) } : null,
+    balance
+      ? { label: "Shareholders' equity", source: 'Balance sheet', value: valueOf(balance, 'total_equity', period) }
+      : null,
+    cashflow
+      ? { label: 'Operating cash flow', source: 'Cash flow statement', value: valueOf(cashflow, 'net_cash_from_operating_activities', period) }
+      : null,
+  ].filter((figure): figure is Kpi => figure !== null);
 
   return (
-    <section className="rise space-y-5">
+    <section className="rise space-y-5" aria-label="Overview">
       <div
         className={cx(
           'flex flex-wrap items-center justify-between gap-4 rounded-2xl border px-6 py-5',
@@ -46,22 +54,19 @@ export default function Overview({ validation, income, balance, cashflow, select
         <div className="flex items-center gap-4">
           <span
             className={cx(
-              'flex h-11 w-11 items-center justify-center rounded-full border text-lg',
+              'grid h-11 w-11 place-items-center rounded-sm border font-mono text-xl',
               balanced === true && 'border-pos text-pos',
               balanced === false && 'border-neg text-neg',
               balanced === null && 'border-line2 text-muted'
             )}
+            aria-hidden="true"
           >
-            {balanced === true ? '=' : balanced === false ? '≠' : '–'}
+            {balanced === true ? '=' : balanced === false ? '\u2260' : '–'}
           </span>
           <div>
             <p className="font-display text-lg text-paper">Balance sheet integrity</p>
-            <p className="tabular text-sm text-muted">
-              {validation
-                ? `${formatCompact(validation.totalAssets)} Assets ${
-                    balanced ? '=' : '≠'
-                  } ${formatCompact(validation.totalLiabilitiesAndEquity ?? validation.totalEquity)} Liabilities + Equity`
-                : 'No balance-sheet validation available for this period.'}
+            <p className="rule-label mt-0.5">
+              {validation ? `audited against the accounting equation for ${validation.period}` : 'no validation available for this period'}
             </p>
           </div>
         </div>
@@ -69,27 +74,49 @@ export default function Overview({ validation, income, balance, cashflow, select
           {validation ? (
             <>
               <p className={cx('tabular text-lg', balanced ? 'text-pos' : 'text-neg')}>
-                {balanced ? 'Balanced' : 'Out of balance'}
+                {formatCompact(validation.totalAssets)} {balanced ? '=' : '\u2260'}{' '}
+                {formatCompact(validation.totalLiabilitiesAndEquity ?? validation.totalEquity)}
               </p>
-              <p className="rule-label">
-                Δ {formatCompact(validation.difference)} · tol {formatCompact(validation.tolerance)}
+              <p className="tabular rule-label mt-0.5">
+                Assets {balanced ? '=' : '\u2260'} Liabilities + Equity · Δ {formatCompact(validation.difference)} against a tolerance of{' '}
+                {formatCompact(validation.tolerance)}
               </p>
             </>
           ) : (
-            <p className="rule-label">n/a</p>
+            <p className="rule-label">not verified</p>
           )}
         </div>
       </div>
 
-      <div className={cx('grid grid-cols-2 gap-3 md:grid-cols-3', cashflow ? 'xl:grid-cols-6' : 'xl:grid-cols-5')}>
-        {figures.map((figure) => (
-          <div key={figure.label} className="panel rounded-xl px-4 py-4">
-            <p className="rule-label mb-2 sm:whitespace-nowrap">{figure.label}</p>
-            <p className="tabular text-xl text-paper">{formatCompact(figure.value)}</p>
-          </div>
-        ))}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="rule-label">Key figures from the statements</p>
+          <span className="flex items-center gap-2">
+            <span className="rounded-sm border border-line2 px-2.5 py-1 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-paper">
+              Period {period}
+            </span>
+            <span
+              className={cx(
+                'rounded-sm border border-line2 px-2.5 py-1 font-mono text-[0.62rem] uppercase tracking-[0.14em]',
+                unitMultiplier !== 1 ? 'text-accent' : 'text-faint'
+              )}
+            >
+              {unitMultiplier !== 1 ? `\u00d7${unitMultiplier.toLocaleString()} units` : 'as reported'}
+            </span>
+          </span>
+        </div>
+        <div className={cx('grid grid-cols-2 gap-3 md:grid-cols-3', cashflow ? 'xl:grid-cols-6' : 'xl:grid-cols-5')}>
+          {figures.map((figure) => (
+            <div key={figure.label} className="group rounded-xl border border-line bg-panel px-4 py-3.5">
+              <p className="rule-label mb-2 whitespace-nowrap">{figure.label}</p>
+              <p className={cx('tabular text-2xl leading-tight', figure.value === null ? 'text-faint' : 'text-paper')}>
+                {formatCompact(figure.value)}
+              </p>
+              <p className="mt-2 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-faint">{figure.source}</p>
+            </div>
+          ))}
+        </div>
       </div>
-      <p className="rule-label">Statement values normalised {scaleNote}</p>
     </section>
   );
 }
