@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { movementTone, ratioFavoursUp } from '@/lib/dashboard';
+import { DEFAULT_HEAT_IDS, DEFAULT_TREND_IDS, defaultDashboardState, movementTone, ratioFavoursUp } from '@/lib/dashboard';
+
+describe('dashboard defaults', () => {
+  it('starts both trends and heat table with no series picked', () => {
+    expect(DEFAULT_TREND_IDS).toEqual([]);
+    expect(DEFAULT_HEAT_IDS).toEqual([]);
+    expect(defaultDashboardState().trendIds).toEqual([]);
+    expect(defaultDashboardState().heatIds).toEqual([]);
+  });
+});
 
 describe('ratioFavoursUp', () => {
   it('marks returns, liquidity and coverage as higher-is-better', () => {

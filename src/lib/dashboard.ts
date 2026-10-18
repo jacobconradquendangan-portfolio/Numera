@@ -24,16 +24,7 @@ export interface DashboardState {
 
 export const DEFAULT_TREND_IDS: string[] = [];
 
-export const DEFAULT_HEAT_IDS = [
-  'current-ratio',
-  'gross-margin',
-  'net-profit-margin',
-  'return-on-assets',
-  'return-on-equity',
-  'debt-to-equity',
-  'inventory-days',
-  'ar-days',
-];
+export const DEFAULT_HEAT_IDS: string[] = [];
 
 export const DASHBOARD_CATEGORIES: RatioCategory[] = ['liquidity', 'profitability', 'leverage', 'efficiency', 'valuation'];
 
