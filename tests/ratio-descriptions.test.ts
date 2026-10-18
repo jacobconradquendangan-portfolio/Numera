@@ -98,4 +98,20 @@ describe('ratio descriptions (CFI)', () => {
       expect(ratio.description.benchmark.toLowerCase()).not.toContain('cfi rule of thumb');
     }
   });
+
+  it('cites a CFI source page for every ratio', () => {
+    for (const ratio of report.ratios) {
+      const source = ratio.description.source;
+      expect(source, `missing CFI source for ${ratio.id}`).toBeDefined();
+      expect(source?.title.length ?? 0, `${ratio.id} source title`).toBeGreaterThan(0);
+      expect(source?.url ?? '', `${ratio.id} source url`).toMatch(
+        /^https:\/\/corporatefinanceinstitute\.com\/resources\//
+      );
+    }
+  });
+
+  it('shares one citation across the cash-basis and CAPEX pairs without duplicating a page per ratio', () => {
+    const byId = new Map(report.ratios.map((ratio) => [ratio.id, ratio.description.source?.url]));
+    expect(byId.get('tie-cash-basis')).toBe(byId.get('capex-to-operating-cash'));
+  });
 });

@@ -122,6 +122,24 @@ function RatioCard({
             <span className="rule-label shrink-0 pt-0.5 text-accent/80">Guidance</span>
             <span className="text-xs leading-relaxed text-accent/90">{ratio.description.benchmark}</span>
           </div>
+          {ratio.description.source ? (
+            <div className="mt-3 border-t border-accent/15 pt-3">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="rule-label shrink-0 text-accent/80">CFI source</span>
+                <a
+                  href={ratio.description.source.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-body text-xs text-paper underline decoration-dotted underline-offset-2 transition hover:text-accent"
+                >
+                  {ratio.description.source.title}
+                </a>
+              </div>
+              {ratio.description.source.note ? (
+                <p className="mt-2 text-xs leading-relaxed text-faint">{ratio.description.source.note}</p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {history.length > 1 ? (

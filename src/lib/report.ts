@@ -57,6 +57,7 @@ export interface ReportRatio {
   measures: string;
   interpretation: string;
   guidance: string;
+  source: { title: string; url: string; note?: string } | null;
   notes: string[];
 }
 
@@ -316,6 +317,7 @@ function buildRatioPeriods(result: AnalyzeSuccess, periods: string[]): ReportPer
           measures: ratio.description.measures,
           interpretation: ratio.description.interpretation,
           guidance: ratio.description.benchmark,
+          source: ratio.description.source ?? null,
           notes: ratio.notes,
         })),
       };

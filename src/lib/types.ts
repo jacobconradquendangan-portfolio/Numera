@@ -29,6 +29,7 @@ export type {
   RatioStep,
   RatioUnit,
   RatioDescription,
+  RatioSource,
   RatioAvailability,
   SupplementalInputs,
   DayCountBasis,

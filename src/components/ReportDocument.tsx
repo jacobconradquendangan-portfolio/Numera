@@ -131,7 +131,14 @@ function RatioEntry({ ratio }: { ratio: ReportModel['ratioPeriods'][number]['cat
         <Field term="Measures" value={ratio.measures} />
         <Field term="Interpretation" value={ratio.interpretation} />
         <Field term="Guidance" value={ratio.guidance} />
+        {ratio.source ? (
+          <Field term="CFI source" value={`${ratio.source.title} · ${ratio.source.url.replace(/^https:\/\//, '')}`} />
+        ) : null}
       </div>
+
+      {ratio.source?.note ? (
+        <p className="mt-1.5 text-[0.68rem] leading-relaxed text-faint">· {ratio.source.note}</p>
+      ) : null}
 
       {ratio.notes.length ? (
         <ul className="mt-1.5 space-y-0.5">

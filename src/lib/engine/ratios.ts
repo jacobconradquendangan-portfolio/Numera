@@ -28,10 +28,17 @@ export interface RatioStep {
   unit: RatioUnit;
 }
 
+export interface RatioSource {
+  title: string;
+  url: string;
+  note?: string;
+}
+
 export interface RatioDescription {
   measures: string;
   interpretation: string;
   benchmark: string;
+  source?: RatioSource;
 }
 
 export interface RatioResult {
@@ -264,6 +271,54 @@ const RATIO_DESCRIPTIONS: Record<string, RatioDescription> = {
     interpretation: 'Lower is cheaper; useful when comparing companies with differing profitability.',
     benchmark: 'No universal multiple; revenue multiples vary widely by sector (high-growth software trades far above mature industrials).',
   },
+};
+
+const CFI = 'https://corporatefinanceinstitute.com/resources';
+
+const RATIO_SOURCES: Record<string, RatioSource> = {
+  'current-ratio': { title: 'Current Ratio Formula \u2014 Overview, Calculation & Examples', url: `${CFI}/accounting/current-ratio-formula` },
+  'quick-ratio': { title: 'Quick Ratio \u2014 Definition, Formula & Examples', url: `${CFI}/accounting/quick-ratio-definition/` },
+  'cash-ratio': {
+    title: 'Cash Ratio \u2014 Definition, Calculation & Template',
+    url: `${CFI}/accounting/cash-ratio-formula`,
+    note: 'CFI\u2019s cash ratio counts cash and cash equivalents only; this engine also includes short-term investments in the numerator.',
+  },
+  'defensive-interval-ratio': { title: 'Defensive Interval Ratio \u2014 Definition & Formula', url: `${CFI}/accounting/defensive-interval-ratio` },
+  'times-interest-earned': { title: 'Interest Coverage Ratio (Times Interest Earned)', url: `${CFI}/commercial-lending/interest-coverage-ratio` },
+  'tie-cash-basis': {
+    title: 'Corporate Finance Ratios \u2014 Interest Coverage (Cash Basis)',
+    url: `${CFI}/accounting/corporate-finance-ratios`,
+    note: 'CFI states this as Adjusted Operating Cash Flow / Interest Expense; this engine approximates the cash numerator with EBIT + depreciation & amortization.',
+  },
+  'capex-to-operating-cash': {
+    title: 'Corporate Finance Ratios \u2014 CAPEX to Operating Cash',
+    url: `${CFI}/accounting/corporate-finance-ratios`,
+    note: 'CFI states the ratio as Operating Cash Flow / Capital Expenditures; this engine inverts it to Capital Expenditures / Operating Cash Flow so a value above 1.0 flags investment funded beyond operating cash.',
+  },
+  'operating-cash-flow-ratio': { title: 'Operating Cash Flow Ratio Template', url: `${CFI}/financial-modeling/operating-cash-flow-ratio-template` },
+  'return-on-equity': { title: 'Return on Equity (ROE) \u2014 Formula, Examples & Guide', url: `${CFI}/accounting/what-is-return-on-equity-roe` },
+  'return-on-assets': { title: 'Return on Assets (ROA) \u2014 Formula, Calculation & Examples', url: `${CFI}/accounting/return-on-assets-roa-formula` },
+  'return-on-capital-employed': { title: 'Return on Capital Employed (ROCE)', url: `${CFI}/accounting/return-on-capital-employed-roce` },
+  'gross-margin': { title: 'Gross Margin Ratio \u2014 Learn How to Calculate', url: `${CFI}/accounting/gross-margin-ratio/` },
+  'operating-margin': { title: 'Operating Profit Margin \u2014 Learn to Calculate', url: `${CFI}/accounting/operating-profit-margin` },
+  'net-profit-margin': { title: 'Net Profit Margin \u2014 Definition, Formula & Example', url: `${CFI}/accounting/net-profit-margin-formula/` },
+  'debt-to-equity': { title: 'Debt Equity Ratio \u2014 Formula & Calculation', url: `${CFI}/commercial-lending/debt-to-equity-ratio-formula` },
+  'equity-ratio': { title: 'Equity Ratio \u2014 Definition, Formula & Examples', url: `${CFI}/valuation/equity-ratio` },
+  'debt-ratio': {
+    title: 'Accounting Ratios \u2014 Debt Ratio = Total Liabilities / Total Assets',
+    url: `${CFI}/accounting/accounting-ratios`,
+    note: 'Matches CFI\u2019s accounting-ratios definition using total liabilities; CFI\u2019s commercial-lending \u201cdebt to assets\u201d variant counts interest-bearing funded debt only.',
+  },
+  'financial-leverage': { title: 'Equity Multiplier \u2014 Guide, Examples & Financial Leverage Ratios', url: `${CFI}/valuation/equity-multiplier` },
+  'ar-turnover': { title: 'Activity Ratios \u2014 Receivables Turnover = Revenue / Average Receivables', url: `${CFI}/accounting/activity-ratios/` },
+  'ar-days': { title: 'Days Sales Outstanding (DSO) \u2014 Formula, Example & Definition', url: `${CFI}/accounting/days-sales-outstanding` },
+  'asset-turnover': { title: 'Asset Turnover Ratio \u2014 Overview and How to Calculate', url: `${CFI}/accounting/asset-turnover-ratio` },
+  'inventory-turnover': { title: 'Inventory Turnover \u2014 Formula, Calculation & Examples', url: `${CFI}/accounting/inventory-turnover/` },
+  'inventory-days': { title: 'Days Sales in Inventory (DSI) \u2014 Formula & Example', url: `${CFI}/financial-modeling/days-sales-in-inventory` },
+  'pe-ratio': { title: 'Price Earnings Ratio \u2014 Formula, Examples & Guide to P/E', url: `${CFI}/valuation/price-earnings-ratio` },
+  'ev-to-ebitda': { title: 'EV/EBITDA \u2014 Definition, Formula, Uses & Pros and Cons', url: `${CFI}/valuation/ev-ebitda/` },
+  'ev-to-ebit': { title: 'EV/EBIT Ratio \u2014 Overview, Formula & Example', url: `${CFI}/valuation/ev-ebit-ratio/` },
+  'ev-to-revenue': { title: 'EV to Revenue Multiple \u2014 Learn How to Calculate', url: `${CFI}/valuation/ev-to-revenue-multiple/` },
 };
 
 const FALLBACK_DESCRIPTION: RatioDescription = {
@@ -512,7 +567,7 @@ function makeResult(
     steps: payload.steps.map((step) => ({ ...step, value: step.value === null ? null : round(step.value, 10) })),
     inputs: payload.inputs,
     notes,
-    description: RATIO_DESCRIPTIONS[definition.id] ?? FALLBACK_DESCRIPTION,
+    description: { ...(RATIO_DESCRIPTIONS[definition.id] ?? FALLBACK_DESCRIPTION), source: RATIO_SOURCES[definition.id] },
     availability,
   };
 }
