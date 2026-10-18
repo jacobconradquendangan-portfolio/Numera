@@ -200,6 +200,10 @@ export default function AnalyzerApp() {
     setSupplemental((previous) => ({ ...previous, [key]: value }));
   }, []);
 
+  const handleSupplementalSample = useCallback(() => {
+    setSupplemental({ ...SAMPLE_SUPPLEMENTAL });
+  }, []);
+
   const periods = useMemo(() => {
     if (!result) return [];
     return (
@@ -392,6 +396,7 @@ export default function AnalyzerApp() {
           values={supplemental}
           onChange={handleSupplementalChange}
           onRecompute={handleRecompute}
+          onLoadSample={handleSupplementalSample}
           busy={loading}
           dayCountBasis={dayCountBasis}
           onDayCountBasisChange={setDayCountBasis}

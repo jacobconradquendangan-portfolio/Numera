@@ -7,6 +7,7 @@ interface SupplementalPanelProps {
   values: SupplementalForm;
   onChange: (key: keyof SupplementalForm, value: string) => void;
   onRecompute: () => void;
+  onLoadSample: () => void;
   busy: boolean;
   dayCountBasis: DayCountBasis;
   onDayCountBasisChange: (value: DayCountBasis) => void;
@@ -32,6 +33,7 @@ export default function SupplementalPanel({
   values,
   onChange,
   onRecompute,
+  onLoadSample,
   busy,
   dayCountBasis,
   onDayCountBasisChange,
@@ -109,6 +111,14 @@ export default function SupplementalPanel({
           ))}
         </div>
         <div className="mt-6 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onLoadSample}
+            disabled={busy}
+            className="rounded-full border border-line2 px-5 py-2 font-mono text-xs uppercase tracking-[0.2em] text-muted transition hover:border-accentdim hover:text-accent disabled:opacity-50"
+          >
+            Load sample
+          </button>
           <button
             type="button"
             onClick={clearAll}

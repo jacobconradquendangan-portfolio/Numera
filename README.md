@@ -146,7 +146,8 @@ Open <http://localhost:3000>.
 1. Choose an input mode — **Manual entry**, **Paste text**, or **Upload file**.
 2. Provide the statement figures. Periods are the editable column headers.
 3. Optionally expand **Market inputs** to feed valuation ratios and override debt, cash, EBITDA or
-   EBIT, and to pick the **day-count basis** (365 or 360 days) used by the day-based ratios.
+   EBIT, and to pick the **day-count basis** (365 or 360 days) used by the day-based ratios. Press
+   **Load sample** to fill every field with the sample market inputs.
    Cash-flow figures are entered as line items in the cash flow statement.
 4. Analyse. Review the validation banners, then explore the overview, vertical/horizontal tables,
    ratios and charts.
