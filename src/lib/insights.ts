@@ -18,7 +18,7 @@ export interface Insight {
 }
 
 export interface InsightReference {
-  label: string;
+  title: string;
   url: string;
 }
 
@@ -30,6 +30,7 @@ export interface InsightReport {
   watches: number;
   insights: Insight[];
   references: InsightReference[];
+  referenceNote: string;
 }
 
 interface BuildInput {
@@ -61,14 +62,17 @@ const INDUSTRY_CAVEAT = 'reference levels are directional and vary by industry.'
 const CFI_BASE = 'https://corporatefinanceinstitute.com/resources';
 
 const REFERENCES: InsightReference[] = [
-  { label: 'CFI — Current Ratio Formula (2:1 rule of thumb)', url: `${CFI_BASE}/accounting/current-ratio-formula` },
-  { label: 'CFI — Quick Ratio / Acid Test (1:1 guideline)', url: `${CFI_BASE}/accounting/quick-ratio-definition/` },
-  { label: 'CFI — Profit Margin (5% low · 10% average · 20% high)', url: `${CFI_BASE}/accounting/profit-margin/` },
-  { label: 'CFI — Interest Coverage Ratio (2× minimum, 3× preferred)', url: `${CFI_BASE}/commercial-lending/interest-coverage-ratio` },
-  { label: 'CFI — Equity Ratio (0.50 or above considered good)', url: `${CFI_BASE}/valuation/equity-ratio` },
-  { label: 'CFI — Operating Cash Flow Ratio (1.0× guideline)', url: `${CFI_BASE}/financial-modeling/operating-cash-flow-ratio-template` },
-  { label: 'CFI — Debt-to-Equity Ratio (levels vary by industry)', url: `${CFI_BASE}/commercial-lending/debt-to-equity-ratio-formula` },
+  { title: 'Current ratio formula, the 2:1 rule of thumb', url: `${CFI_BASE}/accounting/current-ratio-formula` },
+  { title: 'Quick ratio, the acid test at 1:1', url: `${CFI_BASE}/accounting/quick-ratio-definition/` },
+  { title: 'Profit margin bands, 5% low, 10% average, 20% high', url: `${CFI_BASE}/accounting/profit-margin/` },
+  { title: 'Interest coverage, 2× minimum and 3× preferred', url: `${CFI_BASE}/commercial-lending/interest-coverage-ratio` },
+  { title: 'Equity ratio, 0.50 or above considered good', url: `${CFI_BASE}/valuation/equity-ratio` },
+  { title: 'Operating cash flow ratio at 1.0×', url: `${CFI_BASE}/financial-modeling/operating-cash-flow-ratio-template` },
+  { title: 'Debt-to-equity levels vary by industry', url: `${CFI_BASE}/commercial-lending/debt-to-equity-ratio-formula` },
 ];
+
+const REFERENCE_NOTE =
+  'The rules of thumb above are widely published reference levels, not audit standards; each industry reads them differently.';
 
 function indexById(report: RatioReport): Map<string, RatioResult> {
   return new Map(report.ratios.map((ratio) => [ratio.id, ratio]));
@@ -397,5 +401,5 @@ export function buildInsights({ report, history = [], analysis }: BuildInput): I
     verdict = `Mixed picture — ${strengths} strength${strengths === 1 ? '' : 's'} tempered by ${watches} area${watches === 1 ? '' : 's'} to watch.`;
   }
 
-  return { period: report.period, tone, verdict, strengths, watches, insights, references: REFERENCES };
+  return { period: report.period, tone, verdict, strengths, watches, insights, references: REFERENCES, referenceNote: REFERENCE_NOTE };
 }

@@ -94,22 +94,37 @@ export default function InsightsPanel({ insights }: InsightsPanelProps) {
       </div>
 
       {insights.references.length ? (
-        <footer className="rounded-2xl border border-line bg-panel px-6 py-4">
-          <p className="rule-label mb-2">Rules of thumb cited from</p>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1">
-            {insights.references.map((reference) => (
-              <li key={reference.url}>
-                <a
-                  href={reference.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-accent underline decoration-line2 underline-offset-4 hover:text-paper"
-                >
-                  {reference.label}
-                </a>
-              </li>
-            ))}
-          </ul>
+        <footer className="rounded-2xl border border-line bg-panel px-6 py-5">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <p className="rule-label">Sources</p>
+            <p className="font-body text-[0.78rem] italic leading-snug text-faint">
+              Corporate Finance Institute · {insights.referenceNote}
+            </p>
+          </div>
+          <ol className="flex flex-col gap-2">
+            {insights.references.map((reference, index) => {
+              const path = reference.url.replace(/^https:\/\//, '');
+              return (
+                <li key={reference.url} className="flex min-w-0 items-baseline gap-3">
+                  <span className="w-4 shrink-0 text-right font-mono text-[0.6rem] text-faint">{index + 1}</span>
+                  <a
+                    href={reference.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex min-w-0 flex-1 items-baseline gap-2 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <span className="shrink-0 font-body text-[0.84rem] text-paper transition-colors group-hover:text-accent group-focus-visible:text-accent">
+                      {reference.title}
+                    </span>
+                    <span aria-hidden className="hidden min-w-6 flex-1 translate-y-[-3px] border-b border-dotted border-line2 sm:block" />
+                    <span className="hidden shrink-0 truncate font-mono text-[0.6rem] text-faint transition-colors group-hover:text-accent group-focus-visible:text-accent max-w-[15rem] lg:max-w-xs sm:block">
+                      {path}
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ol>
         </footer>
       ) : null}
     </section>

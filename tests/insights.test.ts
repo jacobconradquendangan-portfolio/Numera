@@ -45,9 +45,10 @@ describe('financial health summary', () => {
 
   it('lists verifiable external references', () => {
     expect(report.references.length).toBeGreaterThan(3);
+    expect(report.referenceNote).toMatch(/not audit standards/i);
     expect(new Set(report.references.map((reference) => reference.url)).size).toBe(report.references.length);
     for (const reference of report.references) {
-      expect(reference.label).toContain('CFI');
+      expect(reference.title.length).toBeGreaterThan(10);
       expect(reference.url).toMatch(/^https:\/\/corporatefinanceinstitute\.com\/resources\//);
     }
   });

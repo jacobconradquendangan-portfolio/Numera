@@ -226,17 +226,22 @@ export default function ReportDocument({ result, scope, selectedPeriod, filename
           </div>
           {report.insights.references.length ? (
             <div className="mt-4 break-before-page">
-              <p className="rule-label mb-1.5">Rules of thumb cited from</p>
-              <ul className="space-y-0.5">
-                {report.insights.references.map((reference) => (
-                  <li key={reference.url} className="text-[0.68rem] leading-snug">
-                    <a href={reference.url} target="_blank" rel="noopener noreferrer" className="text-accent">
-                      {reference.label}
-                    </a>
-                    <span className="ml-1.5 font-mono text-[0.6rem] text-faint">{reference.url}</span>
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-line pb-1.5">
+                <p className="rule-label">Sources</p>
+                <p className="font-body text-[0.7rem] italic text-faint">Corporate Finance Institute · {report.insights.referenceNote}</p>
+              </div>
+              <ol className="space-y-1.5">
+                {report.insights.references.map((reference, index) => (
+                  <li key={reference.url} className="flex min-w-0 items-baseline gap-3">
+                    <span className="w-3 shrink-0 font-mono text-[0.6rem] text-faint">{index + 1}.</span>
+                    <span className="shrink-0 font-body text-[0.72rem] text-paper">{reference.title}</span>
+                    <span aria-hidden className="hidden min-w-6 flex-1 translate-y-[-3px] border-b border-dotted border-line2 sm:block" />
+                    <span className="hidden shrink-0 font-mono text-[0.6rem] text-faint break-all sm:block">
+                      {reference.url.replace(/^https:\/\//, '')}
+                    </span>
                   </li>
                 ))}
-              </ul>
+              </ol>
             </div>
           ) : null}
         </Section>
