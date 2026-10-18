@@ -214,6 +214,11 @@ const RATIO_DESCRIPTIONS: Record<string, RatioDescription> = {
     interpretation: 'Higher means more leveraged and more reliant on creditors.',
     benchmark: 'No universal threshold; an appropriate level depends on the industry and how predictable the cash flows are.',
   },
+  'financial-leverage': {
+    measures: "How many dollars of assets the company carries for each dollar of shareholders' equity.",
+    interpretation: 'Higher means assets are funded more by liabilities than by owners, which magnifies both returns and losses.',
+    benchmark: 'No universal target; a multiplier near 1.0 means assets are funded almost entirely by equity, and leverage norms differ widely by industry.',
+  },
   'ar-turnover': {
     measures: 'How many times accounts receivable are collected during a period.',
     interpretation: 'Higher is better; it signals faster collection and efficient credit management.',
@@ -1293,6 +1298,55 @@ function ratioDebtRatio(ctx: RatioContext): RatioResult {
   );
 }
 
+function ratioFinancialLeverage(ctx: RatioContext): RatioResult {
+  const assets = ctx.averageBalance('total_assets');
+  const equity = ctx.averageBalance('total_equity');
+  const { value, note } = divide(assets.value, equity.value);
+  const notes: string[] = [];
+  if (assets.fallback || equity.fallback) {
+    notes.push('A prior period is not available, so period-end balances were used in place of averages.');
+  } else {
+    notes.push('Uses average assets and equity, matching the DuPont breakdown, so it can read differently from the period-end debt-to-equity and equity ratios.');
+  }
+  if (note) notes.push(note);
+  return makeResult(
+    ctx.period,
+    {
+      id: 'financial-leverage',
+      name: 'Financial Leverage Ratio',
+      category: 'leverage',
+      unit: 'times',
+      formula: 'Financial Leverage (Equity Multiplier) = Total Assets / Shareholders\u2019 Equity',
+    },
+    {
+      value,
+      substitution: `${formatNumber(assets.value)} (Total Assets) / ${formatNumber(equity.value)} (Shareholders\u2019 Equity)`,
+      steps: [
+        {
+          label: assets.fallback ? 'Total Assets (period-end)' : 'Total Assets (average)',
+          expression: formatNumber(assets.value),
+          value: assets.value,
+          unit: 'currency',
+        },
+        {
+          label: equity.fallback ? 'Shareholders\u2019 Equity (period-end)' : 'Shareholders\u2019 Equity (average)',
+          expression: formatNumber(equity.value),
+          value: equity.value,
+          unit: 'currency',
+        },
+        {
+          label: 'Financial Leverage',
+          expression: `${formatNumber(assets.value)} / ${formatNumber(equity.value)}`,
+          value,
+          unit: 'times',
+        },
+      ],
+      inputs: [assets.input, equity.input],
+      notes,
+    }
+  );
+}
+
 function turnoverResult(
   ctx: RatioContext,
   id: string,
@@ -1581,7 +1635,8 @@ export function computeFinancialRatios(input: RatioEngineInput): RatioReport {
     ratioNetProfitMargin(ctx),
     ratioDebtToEquity(ctx),
     ratioEquityRatio(ctx),
-    ratioDebtRatio(ctx)
+    ratioDebtRatio(ctx),
+    ratioFinancialLeverage(ctx)
   );
 
   const arTurnover = ratioArTurnover(ctx);

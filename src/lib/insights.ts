@@ -69,6 +69,7 @@ const REFERENCES: InsightReference[] = [
   { title: 'Equity ratio, 0.50 or above considered good', url: `${CFI_BASE}/valuation/equity-ratio` },
   { title: 'Operating cash flow ratio at 1.0×', url: `${CFI_BASE}/financial-modeling/operating-cash-flow-ratio-template` },
   { title: 'Debt-to-equity levels vary by industry', url: `${CFI_BASE}/commercial-lending/debt-to-equity-ratio-formula` },
+  { title: 'Equity multiplier, assets funded per equity dollar', url: `${CFI_BASE}/valuation/equity-multiplier` },
 ];
 
 const REFERENCE_NOTE =
@@ -191,6 +192,7 @@ function leverageInsight(byId: Map<string, RatioResult>, prior: RatioReport | nu
     point(byId, 'debt-to-equity', 'Debt relative to shareholders’ equity; acceptable levels are industry-specific.'),
     point(byId, 'debt-ratio', 'Share of assets financed by liabilities.'),
     point(byId, 'equity-ratio', 'Share of assets financed by equity.'),
+    point(byId, 'financial-leverage', 'Assets carried per dollar of shareholders’ equity; the leverage factor in the DuPont breakdown.'),
   ].filter((entry): entry is InsightPoint => entry !== null);
   let tone: InsightTone = 'neutral';
   let summary = 'Capital structure is moderately leveraged.';

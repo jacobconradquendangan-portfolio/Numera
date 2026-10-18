@@ -193,16 +193,26 @@ describe('buildDuPontData', () => {
     const report = dashboardReports.find((entry) => entry.period === '2025')!;
     expect(row2025.netMargin).toBeCloseTo(ratioValue(report, 'net-profit-margin'), 6);
     expect(row2025.assetTurnover).toBeCloseTo(ratioValue(report, 'asset-turnover'), 6);
-    expect(row2025.financialLeverage).toBeCloseTo(1 + ratioValue(report, 'debt-to-equity'), 6);
+    expect(row2025.financialLeverage).toBeCloseTo(ratioValue(report, 'financial-leverage'), 6);
     expect(row2025.roe).toBeCloseTo(ratioValue(report, 'return-on-equity'), 6);
   });
 
-  it('stays within two points of the reported ROE when phases are present', () => {
+  it('falls back to 1 + debt-to-equity when the leverage ratio is unavailable', () => {
+    const report = dashboardReports.find((entry) => entry.period === '2025')!;
+    const withoutLeverage = {
+      ...report,
+      ratios: report.ratios.filter((ratio) => ratio.id !== 'financial-leverage'),
+    };
+    const [row] = buildDuPontData([withoutLeverage]);
+    expect(row.financialLeverage).toBeCloseTo(1 + ratioValue(report, 'debt-to-equity'), 6);
+  });
+
+  it('multiplies the three factors back to the reported ROE', () => {
     const data = buildDuPontData(dashboardReports);
     for (const row of data) {
       if (row.netMargin === null || row.assetTurnover === null || row.financialLeverage === null) continue;
       const product = (row.netMargin / 100) * row.assetTurnover * row.financialLeverage * 100;
-      expect(product).toBeCloseTo(row.roe ?? NaN, -1);
+      expect(product).toBeCloseTo(row.roe ?? NaN, 4);
     }
   });
 

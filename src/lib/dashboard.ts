@@ -129,7 +129,7 @@ const HIGHER_IS_BETTER = new Set([
   'inventory-turnover',
 ]);
 
-const LOWER_IS_BETTER = new Set(['debt-to-equity', 'debt-ratio', 'ar-days', 'inventory-days']);
+const LOWER_IS_BETTER = new Set(['debt-to-equity', 'debt-ratio', 'financial-leverage', 'ar-days', 'inventory-days']);
 
 const CEILINGS: Record<string, number> = {
   'current-ratio': 3,

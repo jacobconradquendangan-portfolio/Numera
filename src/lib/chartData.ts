@@ -262,13 +262,13 @@ export function buildDuPontData(reports: RatioReport[]): DuPontPoint[] {
     .sort((a, b) => periodSortKey(a.period) - periodSortKey(b.period) || a.period.localeCompare(b.period))
     .map((report) => {
       const byId = new Map(report.ratios.map((ratio) => [ratio.id, ratio]));
+      const debtToEquity = byId.get('debt-to-equity')?.value ?? null;
+      const financialLeverage = byId.get('financial-leverage')?.value ?? null;
       return {
         period: report.period,
         netMargin: byId.get('net-profit-margin')?.value ?? null,
         assetTurnover: byId.get('asset-turnover')?.value ?? null,
-        financialLeverage: byId.get('debt-to-equity')?.value === null || byId.get('debt-to-equity') === undefined
-          ? null
-          : 1 + (byId.get('debt-to-equity')?.value ?? 0),
+        financialLeverage: financialLeverage ?? (debtToEquity === null ? null : 1 + debtToEquity),
         roe: byId.get('return-on-equity')?.value ?? null,
       };
     });

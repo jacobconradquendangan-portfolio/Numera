@@ -62,8 +62,8 @@ describe('end-to-end pipeline: paste text -> parse -> analyze -> CFI ratios', ()
     expect(prior?.percentChange).toBeCloseTo(13.4021, 3);
   });
 
-  it('computes the full 26-ratio CFI suite with nothing unavailable', () => {
-    expect(report.ratios).toHaveLength(26);
+  it('computes the full 27-ratio CFI suite with nothing unavailable', () => {
+    expect(report.ratios).toHaveLength(27);
     expect(report.ratios.filter((entry) => entry.availability === 'unavailable')).toHaveLength(0);
   });
 

@@ -58,6 +58,7 @@ const EXPECTED_IDS = [
   'debt-to-equity',
   'equity-ratio',
   'debt-ratio',
+  'financial-leverage',
   'ar-turnover',
   'ar-days',
   'asset-turnover',

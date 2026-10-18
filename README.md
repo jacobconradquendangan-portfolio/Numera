@@ -7,7 +7,7 @@
 [![CI](https://github.com/jacobconradquendangan-portfolio/Numera/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jacobconradquendangan-portfolio/Numera/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-8f6110?style=flat-square)](LICENSE)
 ![Version](https://img.shields.io/badge/version-1.3.0-8f6110?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-138_passing-357a3d?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-142_passing-357a3d?style=flat-square)
 ![Next.js](https://img.shields.io/badge/Next.js-15-23211a?style=flat-square&logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-23211a?style=flat-square&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-23211a?style=flat-square&logo=typescript&logoColor=3178C6)
@@ -53,7 +53,7 @@ leaves your device.
 | **Automatic line-item mapping** | A 44-category taxonomy matched by exact, substring and fuzzy (Jaccard ≥ 0.6) rules, with unit scaling auto-detected from `(in thousands/millions)` notes. |
 | **Balance-sheet validation** | Proves `Assets = Liabilities + Equity` within a configurable tolerance and surfaces clear, actionable warnings. |
 | **Vertical & horizontal analysis** | Every line item as a share of revenue (income statement), total assets (balance sheet) or operating cash flow (cash flow statement), plus period-over-period variance (Δ and %) in sortable tables. |
-| **CFI ratio engine** | 26 ratios across liquidity, profitability, leverage, efficiency and valuation — each reported as `computed`, `partial` or `unavailable` with a full audit trail. |
+| **CFI ratio engine** | 27 ratios across liquidity, profitability, leverage, efficiency and valuation — each reported as `computed`, `partial` or `unavailable` with a full audit trail. |
 | **Cash flow statement** | Detects operating, investing and financing activities and derives the net change in cash, feeding the operating-cash-flow and CAPEX ratios from the statement itself (external inputs remain a fallback). |
 | **Multi-period ratios** | Every ratio is computed for every period, using true average balances once a prior period exists, so values, cards and charts follow the selected period. |
 | **Configurable day-count basis** | 365-day (default) or 360-day convention for receivables, inventory and defensive-interval days; every day-based solution shows the chosen basis. |
@@ -70,7 +70,7 @@ leaves your device.
 | Category | Ratios |
 | --- | --- |
 | **Profitability** | Return on Equity · Return on Assets · Return on Capital Employed · Gross Margin · Operating Margin · Net Profit Margin |
-| **Leverage** | Debt-to-Equity · Equity Ratio · Debt Ratio |
+| **Leverage** | Debt-to-Equity · Equity Ratio · Debt Ratio · Financial Leverage (Equity Multiplier) |
 | **Efficiency** | AR Turnover · AR Days · Asset Turnover · Inventory Turnover · Inventory Days |
 | **Liquidity** | Current Ratio · Quick Ratio · Cash Ratio · Defensive Interval Ratio · Times Interest Earned · TIE (Cash Basis) · CAPEX to Operating Cash · Operating Cash Flow Ratio |
 | **Valuation** | P/E Ratio · EV/EBITDA · EV/EBIT · EV/Revenue |
@@ -88,7 +88,7 @@ flowchart LR
   A["Input<br/>PDF · Excel · CSV<br/>text · manual"] --> B["Parser<br/>taxonomy matching<br/>normalisation"]
   B --> C["Balance-sheet<br/>validation"]
   B --> D["Analyzer<br/>vertical &<br/>horizontal"]
-  B --> E["Ratio engine<br/>26 CFI ratios"]
+  B --> E["Ratio engine<br/>27 CFI ratios"]
   C --> F["Interface &<br/>summary report"]
   D --> F
   E --> F
