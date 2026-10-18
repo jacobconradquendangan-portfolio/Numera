@@ -41,17 +41,25 @@ function SortHeader<K extends string>({
   sort,
   onSort,
   align = 'left',
+  ruled = false,
 }: {
   label: string;
   columnKey: K;
   sort: SortState<K>;
   onSort: (key: K) => void;
   align?: 'left' | 'right';
+  ruled?: boolean;
 }) {
   const active = sort.key === columnKey;
   const indicator = active ? (sort.dir === 'asc' ? '\u2191' : '\u2193') : '\u2195';
   return (
-    <th className={cx('rule-label px-5 py-3 font-normal', align === 'right' ? 'text-right' : 'text-left')}>
+    <th
+      className={cx(
+        'rule-label px-5 py-3 font-normal',
+        align === 'right' ? 'text-right' : 'text-left',
+        ruled && 'border-l border-line2/70'
+      )}
+    >
       <button
         type="button"
         onClick={() => onSort(columnKey)}
@@ -127,8 +135,8 @@ export default function AnalysisTables({
           <h3 className="font-display text-2xl text-paper">{title}</h3>
           <p className="rule-label mt-1">{subtitle}</p>
         </div>
-        <span className="tabular rounded-full border border-line2 px-3 py-1 text-xs text-muted">
-          {selectedPeriod}
+        <span className="tabular rounded-sm border border-line2 px-2.5 py-1 text-[0.7rem] text-muted">
+          Period {selectedPeriod}
         </span>
       </header>
 
@@ -143,28 +151,38 @@ export default function AnalysisTables({
               <thead className="sticky top-0 z-10 bg-panel2">
                 <tr>
                   <SortHeader label="Line item" columnKey="label" sort={verticalSort} onSort={(key) => setVerticalSort((current) => cycleSort(current, key))} />
-                  <SortHeader label="Value" columnKey="value" sort={verticalSort} onSort={(key) => setVerticalSort((current) => cycleSort(current, key))} align="right" />
-                  <SortHeader label="% of base" columnKey="percent" sort={verticalSort} onSort={(key) => setVerticalSort((current) => cycleSort(current, key))} align="right" />
+                  <SortHeader label="Value" columnKey="value" sort={verticalSort} onSort={(key) => setVerticalSort((current) => cycleSort(current, key))} align="right" ruled />
+                  <SortHeader label="% of base" columnKey="percent" sort={verticalSort} onSort={(key) => setVerticalSort((current) => cycleSort(current, key))} align="right" ruled />
                 </tr>
               </thead>
               <tbody>
                 {sortedVerticalRows.map((entry) => {
                   const width = Math.min(100, (Math.abs(entry.percent ?? 0) / maxPercent) * 100);
                   const tone = toneFor(entry.value);
+                  const keyRow = entry.derived;
                   return (
-                    <tr key={`${entry.category}-${entry.period}`} className="border-t border-line/60 hover:bg-black/[0.025]">
-                      <td className="px-5 py-2.5">
-                        <span className="block text-paper">{entry.label}</span>
+                    <tr
+                      key={`${entry.category}-${entry.period}`}
+                      className="border-t border-line/60 hover:bg-black/[0.025]"
+                    >
+                      <td className={cx('px-5 py-2.5', keyRow && 'border-t-2 border-t-line2')}>
+                        <span className={cx('block', keyRow ? 'font-medium text-paper' : 'text-paper')}>{entry.label}</span>
                         {entry.derived ? (
                           <span className="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-accent">
                             derived
                           </span>
                         ) : null}
                       </td>
-                      <td className={cx('tabular px-3 py-2.5 text-right', tone === 'neg' ? 'text-neg' : 'text-paper')}>
+                      <td
+                        className={cx(
+                          'tabular border-l border-line/60 px-3 py-2.5 text-right',
+                          tone === 'neg' ? 'text-neg' : 'text-paper',
+                          keyRow && 'border-t-2 border-t-line2 font-medium'
+                        )}
+                      >
                         {formatCompact(entry.value)}
                       </td>
-                      <td className="px-5 py-2.5">
+                      <td className={cx('border-l border-line/60 px-5 py-2.5', keyRow && 'border-t-2 border-t-line2')}>
                         <div className="flex items-center justify-end gap-3">
                           <span className="relative hidden h-1 w-20 overflow-hidden rounded-full bg-line sm:block">
                             <span
@@ -172,7 +190,7 @@ export default function AnalysisTables({
                               style={{ width: `${width}%` }}
                             />
                           </span>
-                          <span className="tabular w-16 text-right text-paper">
+                          <span className={cx('tabular w-16 text-right', keyRow ? 'font-medium text-paper' : 'text-paper')}>
                             {formatPercent(entry.percent)}
                           </span>
                         </div>
@@ -204,33 +222,45 @@ export default function AnalysisTables({
               <thead className="sticky top-0 z-10 bg-panel2">
                 <tr>
                   <SortHeader label="Line item" columnKey="label" sort={horizontalSort} onSort={(key) => setHorizontalSort((current) => cycleSort(current, key))} />
-                  <SortHeader label="Δ" columnKey="absolute" sort={horizontalSort} onSort={(key) => setHorizontalSort((current) => cycleSort(current, key))} align="right" />
-                  <SortHeader label="Growth" columnKey="percent" sort={horizontalSort} onSort={(key) => setHorizontalSort((current) => cycleSort(current, key))} align="right" />
+                  <SortHeader label="Δ" columnKey="absolute" sort={horizontalSort} onSort={(key) => setHorizontalSort((current) => cycleSort(current, key))} align="right" ruled />
+                  <SortHeader label="Growth" columnKey="percent" sort={horizontalSort} onSort={(key) => setHorizontalSort((current) => cycleSort(current, key))} align="right" ruled />
                 </tr>
               </thead>
               <tbody>
                 {sortedHorizontalRows.map(({ entry, change }) => {
                   const tone = toneFor(change?.absoluteChange ?? null);
+                  const keyRow = entry.derived;
                   return (
-                    <tr key={entry.category} className="border-t border-line/60 hover:bg-black/[0.025]">
-                      <td className="px-5 py-2.5 text-paper">{entry.label}</td>
+                    <tr
+                      key={entry.category}
+                      className="border-t border-line/60 hover:bg-black/[0.025]"
+                    >
+                      <td className={cx('px-5 py-2.5', keyRow && 'border-t-2 border-t-line2')}>
+                        <span className={cx(keyRow ? 'font-medium text-paper' : 'text-paper')}>{entry.label}</span>
+                      </td>
                       <td
                         className={cx(
-                          'tabular px-3 py-2.5 text-right',
+                          'tabular border-l border-line/60 px-3 py-2.5 text-right',
                           tone === 'pos' && 'text-pos',
                           tone === 'neg' && 'text-neg',
-                          tone === 'flat' && 'text-muted'
+                          tone === 'flat' && 'text-muted',
+                          keyRow && 'border-t-2 border-t-line2 font-medium'
                         )}
                       >
                         {change ? formatSigned(change.absoluteChange) : '—'}
                       </td>
-                      <td className="px-5 py-2.5 text-right">
+                      <td
+                        className={cx(
+                          'border-l border-line/60 px-5 py-2.5 text-right',
+                          keyRow && 'border-t-2 border-t-line2'
+                        )}
+                      >
                         {change && change.percentChange !== null ? (
                           <span
                             className={cx(
-                              'tabular inline-flex min-w-[4.5rem] justify-end rounded-md px-2 py-0.5',
-                              tone === 'pos' && 'bg-pos/10 text-pos',
-                              tone === 'neg' && 'bg-neg/10 text-neg',
+                              'tabular',
+                              tone === 'pos' && 'text-pos',
+                              tone === 'neg' && 'text-neg',
                               tone === 'flat' && 'text-muted'
                             )}
                           >
