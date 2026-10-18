@@ -258,19 +258,31 @@ function growthInsight(
       note: 'Movement in ROE versus the prior period, in percentage points.',
     });
   }
-  const revenueUp = revenue ? (revenue.percentChange ?? 0) > 0 : null;
-  const incomeUp = netIncome ? (netIncome.percentChange ?? 0) > 0 : null;
+  const revPct = revenue && revenue.percentChange !== null ? revenue.percentChange : null;
+  const incPct = netIncome && netIncome.percentChange !== null ? netIncome.percentChange : null;
+  const direction = (value: number | null): boolean | null =>
+    value === null ? null : value > 1 ? true : value < -1 ? false : null;
+  const revDir = direction(revPct);
+  const incDir = direction(incPct);
   let tone: InsightTone = 'neutral';
   let summary = 'Growth is broadly balanced between the periods compared.';
-  if (revenueUp && incomeUp === false) {
-    tone = 'watch';
-    summary = 'Revenue is growing while net income falls — margins are being squeezed.';
-  } else if (revenueUp && incomeUp) {
+  if (revDir === true && incDir === true) {
     tone = 'positive';
     summary = 'Revenue and net income are both expanding, with profits keeping pace with sales.';
-  } else if (revenueUp === false && incomeUp === false) {
+  } else if (revDir === true && incDir === false) {
     tone = 'watch';
-    summary = 'Both revenue and net income contracted versus the prior period.';
+    summary = 'Revenue is growing while net income falls — margins are being squeezed.';
+  } else if (revDir === false && incDir === true) {
+    summary = 'Revenue declined while net income grew — improving profitability on a smaller base.';
+  } else if (revDir === false && incDir === false) {
+    tone = 'watch';
+    summary = 'Both revenue and net income contracted versus the comparable prior period.';
+  } else if (revDir === false || incDir === false) {
+    tone = 'watch';
+    summary = `${revDir === false ? 'Revenue' : 'Net income'} contracted versus the comparable prior period.`;
+  } else if (revDir === true || incDir === true) {
+    tone = 'positive';
+    summary = `${revDir === true ? 'Revenue' : 'Net income'} expanded versus the comparable prior period.`;
   }
   return { id: 'growth', title: 'Growth', tone, summary, points };
 }

@@ -40,6 +40,24 @@ describe('financial health summary', () => {
     expect(growth.tone).toBe('positive');
   });
 
+  it('flags a revenue-only contraction as a watch', () => {
+    const text = [
+      ['Line Item', '2025', '2024', '2023'].join('\t'),
+      ['Revenue', '222', '2,222', '1,111'].join('\t'),
+      ['Cost of Goods Sold', '100', '1,000', '500'].join('\t'),
+    ].join('\n');
+    const doc = parseFinancialText({ text });
+    const run = buildInsights({
+      report: computeRatiosForDocument(doc),
+      history: computeRatiosForAllPeriods(doc),
+      analysis: analyzeDocument(doc),
+    });
+    const growth = run.insights.find((insight) => insight.id === 'growth')!;
+    expect(growth.tone).toBe('watch');
+    expect(growth.summary).toContain('Revenue contracted');
+    expect(growth.points.find((point) => point.label === 'Revenue growth')!.value).toBe('-90.01%');
+  });
+
   it('returns no insights when nothing can be computed', () => {
     const empty = buildInsights({ report: computeRatiosForDocument(parseFinancialText({ text: '' })) });
     expect(empty.insights).toHaveLength(0);
