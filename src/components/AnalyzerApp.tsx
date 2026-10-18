@@ -437,27 +437,54 @@ export default function AnalyzerApp() {
                 onPrint={setPrintScope}
               />
             </div>
+            <nav aria-label="Report sections" className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-line/70 pt-2">
+              {(
+                [
+                  ['Input', '#input-section'],
+                  ['Overview', '#analysis-overview'],
+                  ['Health summary', '#analysis-summary'],
+                  ['Charts', '#analysis-charts'],
+                  ['Statements', '#analysis-statements'],
+                  ['Ratios', '#analysis-ratios'],
+                ] as const
+              ).map(([label, href]) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="rule-label transition hover:text-accent"
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
           </div>
 
-          <Overview
-            validation={validation}
-            income={result.document.statements.income}
-            balance={result.document.statements.balance}
-            cashflow={result.document.statements.cashflow}
-            selectedPeriod={selectedPeriod}
-            unitMultiplier={result.ratios.unitMultiplier}
-          />
+          <div id="analysis-overview" className="scroll-mt-32">
+            <Overview
+              validation={validation}
+              income={result.document.statements.income}
+              balance={result.document.statements.balance}
+              cashflow={result.document.statements.cashflow}
+              selectedPeriod={selectedPeriod}
+              unitMultiplier={result.ratios.unitMultiplier}
+            />
+          </div>
 
-          <InsightsPanel insights={insights} />
+          <div id="analysis-summary" className="scroll-mt-32">
+            <InsightsPanel insights={insights} />
+          </div>
 
-          <ChartsPanel
-            income={result.document.statements.income}
-            report={selectedReport ?? result.ratios}
-            reports={ratioReports}
-            period={selectedPeriod}
-          />
+          <div id="analysis-charts" className="scroll-mt-32">
+            <ChartsPanel
+              income={result.document.statements.income}
+              report={selectedReport ?? result.ratios}
+              reports={ratioReports}
+              period={selectedPeriod}
+            />
+          </div>
 
-          {result.analysis.vertical.income && result.analysis.horizontal.income ? (
+          <section id="analysis-statements" className="scroll-mt-32 space-y-8">
+            {result.analysis.vertical.income && result.analysis.horizontal.income ? (
             <AnalysisTables
               title="Income Statement"
               subtitle="Vertical (percent of revenue) & horizontal (period-over-period)"
@@ -486,8 +513,9 @@ export default function AnalyzerApp() {
               selectedPeriod={selectedPeriod}
             />
           ) : null}
+          </section>
 
-          <section className="space-y-8">
+          <section id="analysis-ratios" className="scroll-mt-32 space-y-8">
             <header className="border-b border-line pb-3">
               <h2 className="font-display text-3xl text-paper">CFI Financial Ratios</h2>
               <p className="rule-label mt-1">
