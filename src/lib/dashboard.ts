@@ -13,7 +13,7 @@ export const PANEL_META: Record<PanelId, { title: string; deck: string }> = {
     title: 'Capital structure & cycle',
     deck: 'Who funds the assets, and how long cash is tied up before it returns',
   },
-  heat: { title: 'Ratio heat table', deck: 'Every chosen ratio across periods, tinted by the change since the prior one' },
+  heat: { title: 'Ratio blotter', deck: 'Chosen ratios grouped by family, each with trend, latest reading and move since the prior period' },
 };
 
 export interface DashboardState {

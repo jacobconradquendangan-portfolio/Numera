@@ -320,6 +320,19 @@ describe('buildHeatTableData', () => {
     expect(rows[0].cells[0].display).toBe('n/a');
     expect(rows[0].cells[0].direction).toBeNull();
   });
+
+  it('reads favourability, not raw direction, for tone', () => {
+    const rows = buildHeatTableData(dashboardReports, ['debt-to-equity', 'net-profit-margin']);
+    const debtRow = rows.find((row) => row.id === 'debt-to-equity')!;
+    expect(debtRow.category).toBe('leverage');
+    expect(debtRow.cells[1].tone).toBe('pos');
+    expect(debtRow.cells[1].changePct).toBeCloseTo(-33.3333, 3);
+    expect(debtRow.deltaTone).toBe('pos');
+    expect(debtRow.spark).toHaveLength(3);
+    const marginRow = rows.find((row) => row.id === 'net-profit-margin')!;
+    expect(marginRow.cells[1].tone).toBe('flat');
+    expect(marginRow.delta).toBe(0);
+  });
 });
 
 describe('buildRatioTrendData with a selection', () => {

@@ -341,20 +341,77 @@ export function buildWorkingCapitalData(reports: RatioReport[]): WorkingCapitalP
 export interface HeatCell {
   period: string;
   display: string;
+  value: number | null;
+  change: number | null;
+  changePct: number | null;
   direction: 'up' | 'down' | 'flat' | null;
+  tone: 'pos' | 'neg' | 'flat' | null;
 }
 
 export interface HeatRow {
   id: string;
   label: string;
+  category: string;
+  unit: string;
   cells: HeatCell[];
+  latest: string;
+  latestValue: number | null;
+  delta: number | null;
+  deltaTone: 'pos' | 'neg' | 'flat' | null;
+  spark: (number | null)[];
 }
 
 const DIRECTION_EPSILON = 1e-6;
 
+const HEAT_FAVOURS_UP = new Set([
+  'current-ratio',
+  'quick-ratio',
+  'cash-ratio',
+  'defensive-interval-ratio',
+  'times-interest-earned',
+  'tie-cash-basis',
+  'operating-cash-flow-ratio',
+  'return-on-equity',
+  'return-on-assets',
+  'return-on-capital-employed',
+  'gross-margin',
+  'operating-margin',
+  'net-profit-margin',
+  'equity-ratio',
+  'ar-turnover',
+  'asset-turnover',
+  'inventory-turnover',
+]);
+
+const HEAT_FAVOURS_DOWN = new Set([
+  'debt-to-equity',
+  'debt-ratio',
+  'financial-leverage',
+  'ar-days',
+  'inventory-days',
+]);
+
+const HEAT_CEILINGS: Record<string, number> = {
+  'current-ratio': 3,
+};
+
+function heatTone(id: string, current: number | null, prior: number | null): 'pos' | 'neg' | 'flat' | null {
+  const up = HEAT_FAVOURS_UP.has(id);
+  const down = HEAT_FAVOURS_DOWN.has(id);
+  if (!up && !down) return null;
+  if (current === null || prior === null) return null;
+  const change = current - prior;
+  if (Math.abs(change) <= DIRECTION_EPSILON) return 'flat';
+  const better = change > 0 === up;
+  if (!better) return 'neg';
+  const ceiling = HEAT_CEILINGS[id];
+  if (ceiling !== undefined && up && current > ceiling) return null;
+  return 'pos';
+}
+
 export function buildHeatTableData(reports: RatioReport[], selectedIds: string[]): HeatRow[] {
   if (!selectedIds.length) return [];
-  const nameById = ratioNameLookup(reports);
+  const metaById = new Map(reports.flatMap((report) => report.ratios.map((ratio) => [ratio.id, ratio] as const)));
   const sorted = [...reports].sort(
     (a, b) => periodSortKey(a.period) - periodSortKey(b.period) || a.period.localeCompare(b.period)
   );
@@ -364,20 +421,48 @@ export function buildHeatTableData(reports: RatioReport[], selectedIds: string[]
   }
   const periods = sorted.map((report) => report.period);
   return selectedIds.map((id) => {
+    const meta = metaById.get(id);
     const cells: HeatCell[] = [];
+    const spark: (number | null)[] = [];
     let previous: number | null = null;
     for (const period of periods) {
       const ratio = byPeriodId.get(period)?.get(id);
       const value = ratio?.value ?? null;
       let direction: HeatCell['direction'] = null;
+      let change: number | null = null;
+      let changePct: number | null = null;
       if (value !== null && previous !== null) {
-        if (value - previous > DIRECTION_EPSILON) direction = 'up';
+        change = value - previous;
+        if (change > DIRECTION_EPSILON) direction = 'up';
         else if (previous - value > DIRECTION_EPSILON) direction = 'down';
-        else direction = 'flat';
+        else {
+          direction = 'flat';
+          change = 0;
+        }
+        changePct = previous !== 0 ? (change / Math.abs(previous)) * 100 : null;
       }
-      cells.push({ period, display: ratio?.display ?? '—', direction });
+      const tone = heatTone(id, value, previous);
+      cells.push({ period, display: ratio?.display ?? 'n/a', value, change, changePct, direction, tone });
+      spark.push(value);
       previous = value;
     }
-    return { id, label: nameById.get(id) ?? id, cells };
+    const lastValue = [...spark].reverse().find((entry) => entry !== null) ?? null;
+    const lastIndex = spark.lastIndexOf(lastValue);
+    const priorValue = lastIndex > 0 ? [...spark.slice(0, lastIndex)].reverse().find((entry) => entry !== null) ?? null : null;
+    const delta = lastValue !== null && priorValue !== null ? lastValue - priorValue : null;
+    const deltaTone = heatTone(id, lastValue, priorValue);
+    const lastCell = lastIndex >= 0 ? cells[lastIndex] : null;
+    return {
+      id,
+      label: meta?.name ?? id,
+      category: meta?.category ?? 'other',
+      unit: meta?.unit ?? '',
+      cells,
+      latest: lastCell?.display ?? 'n/a',
+      latestValue: lastValue,
+      delta,
+      deltaTone,
+      spark,
+    };
   });
 }

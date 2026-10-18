@@ -381,7 +381,7 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
 
         {state.panels.heat ? (
           <PanelShell metaId="heat" span="xl:col-span-2" right={heatPicker}>
-            <RatioHeatTable rows={heatRows} />
+            <RatioHeatTable rows={heatRows} selectedPeriod={selectedReport.period} />
           </PanelShell>
         ) : null}
       </div>
