@@ -10,11 +10,12 @@ describe('end-to-end pipeline: paste text -> parse -> analyze -> CFI ratios', ()
   const analysis = analyzeDocument(document);
   const report = computeRatiosForDocument(document, { supplemental: SAMPLE_SUPPLEMENTAL_NUMERIC });
 
-  it('parses two statement tables across three periods', () => {
+  it('parses three statement tables across three periods', () => {
     expect(document.source.format).toBe('text');
-    expect(document.source.tableCount).toBe(2);
+    expect(document.source.tableCount).toBe(3);
     expect(document.statements.income!.periods).toEqual(['2025', '2024', '2023']);
     expect(document.statements.balance!.periods).toEqual(['2025', '2024', '2023']);
+    expect(document.statements.cashflow!.periods).toEqual(['2025', '2024', '2023']);
   });
 
   it('validates the balance sheet for every period', () => {
@@ -26,11 +27,13 @@ describe('end-to-end pipeline: paste text -> parse -> analyze -> CFI ratios', ()
     expect(document.warnings).toHaveLength(0);
   });
 
-  it('produces vertical and horizontal analysis for both statements', () => {
+  it('produces vertical and horizontal analysis for every statement', () => {
     expect(analysis.vertical.income).not.toBeNull();
     expect(analysis.vertical.balance).not.toBeNull();
+    expect(analysis.vertical.cashflow).not.toBeNull();
     expect(analysis.horizontal.income).not.toBeNull();
     expect(analysis.horizontal.balance).not.toBeNull();
+    expect(analysis.horizontal.cashflow).not.toBeNull();
   });
 
   it('bases vertical analysis on total revenue and total assets', () => {

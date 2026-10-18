@@ -7,7 +7,7 @@
 [![CI](https://github.com/jacobconradquendangan-portfolio/Numera/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jacobconradquendangan-portfolio/Numera/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-8f6110?style=flat-square)](LICENSE)
 ![Version](https://img.shields.io/badge/version-1.1.0-8f6110?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-98_passing-357a3d?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-105_passing-357a3d?style=flat-square)
 ![Next.js](https://img.shields.io/badge/Next.js-15-23211a?style=flat-square&logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-23211a?style=flat-square&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-23211a?style=flat-square&logo=typescript&logoColor=3178C6)
@@ -52,12 +52,13 @@ leaves your device.
 | **Multiple input paths** | Manual entry with an editable period grid and a searchable line-item combobox; paste statement text; or upload PDF, Excel (`.xlsx` / `.xls`) or CSV. |
 | **Automatic line-item mapping** | A 44-category taxonomy matched by exact, substring and fuzzy (Jaccard ≥ 0.6) rules, with unit scaling auto-detected from `(in thousands/millions)` notes. |
 | **Balance-sheet validation** | Proves `Assets = Liabilities + Equity` within a configurable tolerance and surfaces clear, actionable warnings. |
-| **Vertical & horizontal analysis** | Every line item as a share of revenue / total assets, plus period-over-period variance (Δ and %) in sortable tables. |
+| **Vertical & horizontal analysis** | Every line item as a share of revenue (income statement), total assets (balance sheet) or operating cash flow (cash flow statement), plus period-over-period variance (Δ and %) in sortable tables. |
 | **CFI ratio engine** | 26 ratios across liquidity, profitability, leverage, efficiency and valuation — each reported as `computed`, `partial` or `unavailable` with a full audit trail. |
+| **Cash flow statement** | Detects operating, investing and financing activities and derives the net change in cash, feeding the operating-cash-flow and CAPEX ratios from the statement itself (external inputs remain a fallback). |
 | **Multi-period ratios** | Every ratio is computed for every period, using true average balances once a prior period exists, so values, cards and charts follow the selected period. |
 | **Configurable day-count basis** | 365-day (default) or 360-day convention for receivables, inventory and defensive-interval days; every day-based solution shows the chosen basis. |
 | **Transparent solutions** | Each ratio exposes its formula, the substituted source values (data lineage) and the step-by-step result. |
-| **Downloadable summary report** | Export a text-based PDF summary — overview, vertical and horizontal analysis, and every ratio's audit trail — for the selected period or all periods. |
+| **Downloadable summary report** | Export a text-based PDF summary — overview, vertical and horizontal analysis (income, balance and cash flow), and every ratio's audit trail — for the selected period or all periods. |
 | **Visual analysis** | Trend, ratio-comparison, profitability-trend and common-size (vertical) charts. |
 | **Input validation** | Malformed numbers, duplicate periods, unbalanced statements and unreadable files are caught up front with minimisable alert banners. |
 
@@ -143,8 +144,9 @@ Open <http://localhost:3000>.
 
 1. Choose an input mode — **Manual entry**, **Paste text**, or **Upload file**.
 2. Provide the statement figures. Periods are the editable column headers.
-3. Optionally expand **Market & cash-flow inputs** to feed valuation and cash-flow ratios, and to
-   pick the **day-count basis** (365 or 360 days) used by the day-based ratios.
+3. Optionally expand **Market inputs** to feed valuation ratios and override debt, cash, EBITDA or
+   EBIT, and to pick the **day-count basis** (365 or 360 days) used by the day-based ratios.
+   Cash-flow figures are entered as line items in the cash flow statement.
 4. Analyse. Review the validation banners, then explore the overview, vertical/horizontal tables,
    ratios and charts.
 5. Use **Download summary** in the period bar to export a text-based PDF report — either the
@@ -186,8 +188,9 @@ npm run typecheck # static checks
 npm run lint      # lint
 ```
 
-The suite covers the parser, manual and paste ingestion, balance-sheet validation, the ratio
-engine (benchmarks and edge cases), the summary report model and full pipeline integration.
+The suite covers the parser, manual and paste ingestion, balance-sheet validation, cash flow
+statements, the ratio engine (benchmarks and edge cases), the summary report model and full pipeline
+integration.
 
 ---
 

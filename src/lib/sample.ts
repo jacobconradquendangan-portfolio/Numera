@@ -44,7 +44,15 @@ const balance = [
   row("Total Shareholders' Equity", '750,000', '680,000', '618,000'),
 ];
 
-export const SAMPLE_TEXT = [...income, '', '', ...balance].join('\n');
+const cashflow = [
+  row('Line Item', '2025', '2024', '2023'),
+  row('Net Cash from Operating Activities', '232,000', '184,800', '150,800'),
+  row('Capital Expenditures', '80,000', '70,000', '60,000'),
+  row('Net Cash from Investing Activities', '(80,000)', '(70,000)', '(60,000)'),
+  row('Net Cash from Financing Activities', '(32,000)', '(30,000)', '(28,000)'),
+];
+
+export const SAMPLE_TEXT = [...income, '', '', ...balance, '', '', ...cashflow].join('\n');
 
 export const SAMPLE_SUPPLEMENTAL: SupplementalForm = {
   sharePrice: '25',
@@ -52,8 +60,6 @@ export const SAMPLE_SUPPLEMENTAL: SupplementalForm = {
   earningsPerShare: '2.40',
   marketCapitalization: '2000000',
   enterpriseValue: '2060000',
-  operatingCashFlow: '230000',
-  capitalExpenditures: '80000',
   ebitda: '300000',
   ebit: '260000',
   totalDebt: '260000',

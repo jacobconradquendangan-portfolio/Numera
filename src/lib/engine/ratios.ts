@@ -75,7 +75,11 @@ export interface SupplementalInputs {
 }
 
 export interface RatioEngineInput {
-  statements: { income: NormalizedStatement | null; balance: NormalizedStatement | null };
+  statements: {
+    income: NormalizedStatement | null;
+    balance: NormalizedStatement | null;
+    cashflow?: NormalizedStatement | null;
+  };
   period?: string;
   supplemental?: SupplementalInputs;
   useAverageBalances?: boolean;
@@ -101,6 +105,7 @@ interface RatioContext {
   availablePeriods: string[];
   income: NormalizedStatement | null;
   balance: NormalizedStatement | null;
+  cashflow: NormalizedStatement | null;
   supplemental: SupplementalInputs;
   useAverageBalances: boolean;
   daysInYear: number;
@@ -108,6 +113,7 @@ interface RatioContext {
   labelFor: (category: FinancialCategory) => string;
   incomeValue: (category: FinancialCategory, period?: string) => number | null;
   balanceValue: (category: FinancialCategory, period?: string) => number | null;
+  cashflowValue: (category: FinancialCategory, period?: string) => number | null;
   incomeInput: (category: FinancialCategory) => ResolvedValue;
   balanceInput: (category: FinancialCategory) => ResolvedValue;
   averageBalance: (category: FinancialCategory) => ResolvedValue;
@@ -119,6 +125,7 @@ for (const definition of TAXONOMY) LABEL_BY_CATEGORY.set(definition.key, definit
 
 const INCOME_SOURCE = 'Income Statement';
 const BALANCE_SOURCE = 'Balance Sheet';
+const CASHFLOW_SOURCE = 'Cash Flow Statement';
 const EXTERNAL_SOURCE = 'External input';
 
 const RATIO_DESCRIPTIONS: Record<string, RatioDescription> = {
@@ -341,13 +348,14 @@ function valueInput(
 function createContext(input: RatioEngineInput): RatioContext {
   const income = input.statements.income;
   const balance = input.statements.balance;
+  const cashflow = input.statements.cashflow ?? null;
   const supplemental = input.supplemental ?? {};
   const useAverageBalances = input.useAverageBalances ?? true;
   const daysInYear = resolveDaysInYear(input.daysInYear);
   const warnings: string[] = [];
 
   const rawPeriods: string[] = [];
-  for (const statement of [balance, income]) {
+  for (const statement of [balance, income, cashflow]) {
     if (!statement) continue;
     for (const period of statement.periods) if (!rawPeriods.includes(period)) rawPeriods.push(period);
   }
@@ -382,6 +390,9 @@ function createContext(input: RatioEngineInput): RatioContext {
 
   const balanceValue = (category: FinancialCategory, targetPeriod = period): number | null =>
     statementValue(balance, category, targetPeriod);
+
+  const cashflowValue = (category: FinancialCategory, targetPeriod = period): number | null =>
+    statementValue(cashflow, category, targetPeriod);
 
   const incomeInput = (category: FinancialCategory): ResolvedValue => ({
     value: incomeValue(category),
@@ -441,6 +452,7 @@ function createContext(input: RatioEngineInput): RatioContext {
     availablePeriods: ordered,
     income,
     balance,
+    cashflow,
     supplemental,
     useAverageBalances,
     daysInYear,
@@ -448,6 +460,7 @@ function createContext(input: RatioEngineInput): RatioContext {
     labelFor,
     incomeValue,
     balanceValue,
+    cashflowValue,
     incomeInput,
     balanceInput,
     averageBalance,
@@ -859,13 +872,31 @@ function ratioTieCashBasis(ctx: RatioContext): RatioResult {
   );
 }
 
+function preferredCashflowInput(
+  ctx: RatioContext,
+  category: FinancialCategory,
+  label: string,
+  supplementalKey: keyof SupplementalInputs
+): RatioInput {
+  const fromStatement = ctx.cashflowValue(category);
+  if (fromStatement !== null) {
+    return { key: category, label, value: fromStatement, unit: 'currency', source: CASHFLOW_SOURCE, period: ctx.period };
+  }
+  return ctx.external(supplementalKey, label, ctx.supplemental[supplementalKey], CASHFLOW_SOURCE);
+}
+
 function ratioCapexToOperatingCash(ctx: RatioContext): RatioResult {
-  const capex = ctx.external('capitalExpenditures', 'Capital Expenditures', ctx.supplemental.capitalExpenditures, 'Cash Flow Statement');
-  const ocf = ctx.external('operatingCashFlow', 'Operating Cash Flow', ctx.supplemental.operatingCashFlow, 'Cash Flow Statement');
+  const capex = preferredCashflowInput(ctx, 'capital_expenditures', 'Capital Expenditures', 'capitalExpenditures');
+  const ocf = preferredCashflowInput(
+    ctx,
+    'net_cash_from_operating_activities',
+    'Operating Cash Flow',
+    'operatingCashFlow'
+  );
   const { value, note } = divide(capex.value, ocf.value);
   const notes: string[] = [];
   if (capex.value === null || ocf.value === null) {
-    notes.push('Requires cash flow statement data supplied as external inputs.');
+    notes.push('Add a Cash Flow statement with capital expenditures and operating cash flow, or supply them as external inputs.');
   }
   if (note) notes.push(note);
   return makeResult(
@@ -897,11 +928,16 @@ function ratioCapexToOperatingCash(ctx: RatioContext): RatioResult {
 }
 
 function ratioOperatingCashFlow(ctx: RatioContext): RatioResult {
-  const ocf = ctx.external('operatingCashFlow', 'Operating Cash Flow', ctx.supplemental.operatingCashFlow, 'Cash Flow Statement');
+  const ocf = preferredCashflowInput(
+    ctx,
+    'net_cash_from_operating_activities',
+    'Operating Cash Flow',
+    'operatingCashFlow'
+  );
   const cl = currentLiabilities(ctx);
   const { value, note } = divide(ocf.value, cl.value);
   const notes: string[] = [];
-  if (ocf.value === null) notes.push('Operating cash flow must be supplied as an external input.');
+  if (ocf.value === null) notes.push('Add a Cash Flow statement with operating cash flow, or supply it as an external input.');
   if (note) notes.push(note);
   return makeResult(
     ctx.period,
@@ -1573,7 +1609,7 @@ export function computeFinancialRatios(input: RatioEngineInput): RatioReport {
   const byCategory = emptyCategoryMap();
   for (const ratio of ratios) byCategory[ratio.category].push(ratio);
 
-  const unitMultiplier = ctx.balance?.unitMultiplier ?? ctx.income?.unitMultiplier ?? 1;
+  const unitMultiplier = ctx.balance?.unitMultiplier ?? ctx.income?.unitMultiplier ?? ctx.cashflow?.unitMultiplier ?? 1;
   const warnings = [...ctx.warnings];
   if (unitMultiplier !== 1 && Object.values(input.supplemental ?? {}).some((value) => typeof value === 'number')) {
     warnings.push(
@@ -1614,7 +1650,7 @@ export function computeRatiosForDocument(
 
 export function listStatementPeriods(document: ParsedDocument): string[] {
   const rawPeriods: string[] = [];
-  for (const statement of [document.statements.balance, document.statements.income]) {
+  for (const statement of [document.statements.balance, document.statements.income, document.statements.cashflow]) {
     if (!statement) continue;
     for (const period of statement.periods) if (!rawPeriods.includes(period)) rawPeriods.push(period);
   }

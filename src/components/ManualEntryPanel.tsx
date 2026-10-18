@@ -5,7 +5,7 @@ import CategoryCombobox from './CategoryCombobox';
 import { cx } from '@/lib/format';
 import { hasBlockingErrors, isMalformedNumber, validateManualStatements } from '@/lib/validation';
 import type { ValidationIssue } from '@/lib/validation';
-import type { CategoryOption, ManualStatementPayload } from '@/lib/types';
+import type { CategoryOption, ManualStatementPayload, StatementType } from '@/lib/types';
 
 export interface ManualValidationState {
   blocked: boolean;
@@ -42,6 +42,7 @@ export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange }
   const [periods, setPeriods] = useState<string[]>(['2025', '2024']);
   const [incomeRows, setIncomeRows] = useState<Row[]>(() => [emptyRow(2), emptyRow(2), emptyRow(2)]);
   const [balanceRows, setBalanceRows] = useState<Row[]>(() => [emptyRow(2), emptyRow(2), emptyRow(2)]);
+  const [cashflowRows, setCashflowRows] = useState<Row[]>(() => [emptyRow(2), emptyRow(2)]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
 
   useEffect(() => {
@@ -59,11 +60,13 @@ export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange }
 
   const incomeOptions = useMemo(() => categories.filter((c) => c.statement === 'income'), [categories]);
   const balanceOptions = useMemo(() => categories.filter((c) => c.statement === 'balance'), [categories]);
+  const cashflowOptions = useMemo(() => categories.filter((c) => c.statement === 'cashflow'), [categories]);
 
   const addPeriod = useCallback(() => {
     setPeriods((previous) => [...previous, '']);
     setIncomeRows((rows) => rows.map((row) => ({ ...row, values: [...row.values, ''] })));
     setBalanceRows((rows) => rows.map((row) => ({ ...row, values: [...row.values, ''] })));
+    setCashflowRows((rows) => rows.map((row) => ({ ...row, values: [...row.values, ''] })));
   }, []);
 
   const updatePeriod = useCallback((index: number, value: string) => {
@@ -74,19 +77,24 @@ export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange }
     setPeriods((previous) => (previous.length <= 1 ? previous : previous.filter((_, i) => i !== index)));
     setIncomeRows((rows) => rows.map((row) => ({ ...row, values: row.values.filter((_, i) => i !== index) })));
     setBalanceRows((rows) => rows.map((row) => ({ ...row, values: row.values.filter((_, i) => i !== index) })));
+    setCashflowRows((rows) => rows.map((row) => ({ ...row, values: row.values.filter((_, i) => i !== index) })));
   }, []);
 
-  const setterFor = useCallback((type: 'income' | 'balance') => (type === 'income' ? setIncomeRows : setBalanceRows), []);
+  const setterFor = useCallback(
+    (type: StatementType) =>
+      type === 'income' ? setIncomeRows : type === 'balance' ? setBalanceRows : setCashflowRows,
+    []
+  );
 
   const updateLabel = useCallback(
-    (type: 'income' | 'balance', id: string, value: string) => {
+    (type: StatementType, id: string, value: string) => {
       setterFor(type)((rows) => rows.map((row) => (row.id === id ? { ...row, label: value } : row)));
     },
     [setterFor]
   );
 
   const updateValue = useCallback(
-    (type: 'income' | 'balance', id: string, column: number, value: string) => {
+    (type: StatementType, id: string, column: number, value: string) => {
       setterFor(type)((rows) =>
         rows.map((row) =>
           row.id === id ? { ...row, values: row.values.map((existing, i) => (i === column ? value : existing)) } : row
@@ -97,21 +105,21 @@ export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange }
   );
 
   const addRow = useCallback(
-    (type: 'income' | 'balance') => {
+    (type: StatementType) => {
       setterFor(type)((rows) => [...rows, emptyRow(periods.length)]);
     },
     [periods.length, setterFor]
   );
 
   const removeRow = useCallback(
-    (type: 'income' | 'balance', id: string) => {
+    (type: StatementType, id: string) => {
       setterFor(type)((rows) => rows.filter((row) => row.id !== id));
     },
     [setterFor]
   );
 
   const buildStatement = useCallback(
-    (type: 'income' | 'balance', rows: Row[]): ManualStatementPayload | null => {
+    (type: StatementType, rows: Row[]): ManualStatementPayload | null => {
       const activeColumns = periods
         .map((period, index) => ({ period: period.trim(), index }))
         .filter((column) => column.period !== '');
@@ -131,15 +139,17 @@ export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange }
   const hasLines = useMemo(() => {
     const check = (rows: Row[]) =>
       rows.some((row) => row.label.trim() !== '' && row.values.some((value) => value.trim() !== ''));
-    return check(incomeRows) || check(balanceRows);
-  }, [incomeRows, balanceRows]);
+    return check(incomeRows) || check(balanceRows) || check(cashflowRows);
+  }, [incomeRows, balanceRows, cashflowRows]);
 
   const previewStatements = useMemo(
     () =>
-      [buildStatement('income', incomeRows), buildStatement('balance', balanceRows)].filter(
-        (statement): statement is ManualStatementPayload => statement !== null
-      ),
-    [buildStatement, incomeRows, balanceRows]
+      [
+        buildStatement('income', incomeRows),
+        buildStatement('balance', balanceRows),
+        buildStatement('cashflow', cashflowRows),
+      ].filter((statement): statement is ManualStatementPayload => statement !== null),
+    [buildStatement, incomeRows, balanceRows, cashflowRows]
   );
 
   const issues = useMemo(() => validateManualStatements(previewStatements), [previewStatements]);
@@ -159,18 +169,20 @@ export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange }
       );
     collect(incomeRows);
     collect(balanceRows);
+    collect(cashflowRows);
     return set;
-  }, [incomeRows, balanceRows]);
+  }, [incomeRows, balanceRows, cashflowRows]);
 
   const handleAnalyze = useCallback(() => {
     const statements = [
       buildStatement('income', incomeRows),
       buildStatement('balance', balanceRows),
+      buildStatement('cashflow', cashflowRows),
     ].filter((statement): statement is ManualStatementPayload => statement !== null);
     if (statements.length && !blocked) onAnalyze(statements);
-  }, [blocked, buildStatement, incomeRows, balanceRows, onAnalyze]);
+  }, [blocked, buildStatement, incomeRows, balanceRows, cashflowRows, onAnalyze]);
 
-  const renderEditor = (type: 'income' | 'balance', rows: Row[], options: CategoryOption[], title: string, hint: string) => (
+  const renderEditor = (type: StatementType, rows: Row[], options: CategoryOption[], title: string, hint: string) => (
     <div className="rounded-2xl border border-line">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3">
         <div>
@@ -301,6 +313,7 @@ export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange }
       <div className="acc-body space-y-5 border-t border-line px-6 py-5">
         {renderEditor('income', incomeRows, incomeOptions, 'Income statement', 'Revenue, costs, profit')}
         {renderEditor('balance', balanceRows, balanceOptions, 'Balance sheet', 'Assets, liabilities, equity')}
+        {renderEditor('cashflow', cashflowRows, cashflowOptions, 'Cash flow statement', 'Operating, investing, financing')}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-xl font-mono text-[0.68rem] uppercase tracking-[0.14em] text-faint">

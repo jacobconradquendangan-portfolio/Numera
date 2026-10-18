@@ -1,5 +1,5 @@
 import type { AnalyzeSuccess, DayCountBasis, VerticalAnalysis, HorizontalAnalysis } from '@/lib/types';
-import type { DocumentFormat } from '@/lib/engine/parser';
+import type { DocumentFormat, StatementType } from '@/lib/engine/parser';
 import type { RatioAvailability, RatioCategory, RatioReport } from '@/lib/engine/ratios';
 import { formatNumber, formatPercent, formatSignedPercent } from '@/lib/format';
 
@@ -79,8 +79,10 @@ export interface ReportModel {
   integrity: ReportIntegrity[];
   incomeVertical: ReportTable | null;
   balanceVertical: ReportTable | null;
+  cashflowVertical: ReportTable | null;
   incomeHorizontal: ReportTable | null;
   balanceHorizontal: ReportTable | null;
+  cashflowHorizontal: ReportTable | null;
   ratioPeriods: ReportPeriodRatios[];
 }
 
@@ -110,12 +112,13 @@ const CATEGORY_BLURBS: Record<RatioCategory, string> = {
   valuation: 'Market pricing multiples',
 };
 
-const OVERVIEW_ROWS: { label: string; statement: 'income' | 'balance'; category: string }[] = [
+const OVERVIEW_ROWS: { label: string; statement: StatementType; category: string }[] = [
   { label: 'Revenue', statement: 'income', category: 'revenue' },
   { label: 'Net income', statement: 'income', category: 'net_income' },
   { label: 'Total assets', statement: 'balance', category: 'total_assets' },
   { label: 'Total liabilities', statement: 'balance', category: 'total_liabilities' },
   { label: "Shareholders' equity", statement: 'balance', category: 'total_equity' },
+  { label: 'Operating cash flow', statement: 'cashflow', category: 'net_cash_from_operating_activities' },
 ];
 
 function formatMetric(value: number | null | undefined): string {
@@ -184,7 +187,7 @@ function scopedPeriods(result: AnalyzeSuccess, options: ReportOptions): string[]
   return all.length ? [all[all.length - 1]] : [];
 }
 
-function statementValue(result: AnalyzeSuccess, statement: 'income' | 'balance', category: string, period: string): number | null {
+function statementValue(result: AnalyzeSuccess, statement: StatementType, category: string, period: string): number | null {
   const source = result.document.statements[statement];
   const item = source?.lineItems.find((entry) => entry.category === category);
   const value = item?.values[period];
@@ -328,8 +331,10 @@ export function buildReport(result: AnalyzeSuccess, options: ReportOptions): Rep
     integrity: buildIntegrity(result, periods),
     incomeVertical: buildVerticalTable(result.analysis.vertical.income, periods),
     balanceVertical: buildVerticalTable(result.analysis.vertical.balance, periods),
+    cashflowVertical: buildVerticalTable(result.analysis.vertical.cashflow, periods),
     incomeHorizontal: buildHorizontalTable(result.analysis.horizontal.income, periods),
     balanceHorizontal: buildHorizontalTable(result.analysis.horizontal.balance, periods),
+    cashflowHorizontal: buildHorizontalTable(result.analysis.horizontal.cashflow, periods),
     ratioPeriods: buildRatioPeriods(result, periods),
   };
 }

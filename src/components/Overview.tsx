@@ -7,6 +7,7 @@ interface OverviewProps {
   validation: BalanceSheetValidation | undefined;
   income: NormalizedStatement | null;
   balance: NormalizedStatement | null;
+  cashflow?: NormalizedStatement | null;
   selectedPeriod: string;
   unitMultiplier: number;
 }
@@ -17,13 +18,16 @@ function valueOf(statement: NormalizedStatement | null, category: string, period
   return value === null || value === undefined ? null : value;
 }
 
-export default function Overview({ validation, income, balance, selectedPeriod, unitMultiplier }: OverviewProps) {
+export default function Overview({ validation, income, balance, cashflow, selectedPeriod, unitMultiplier }: OverviewProps) {
   const figures = [
     { label: 'Revenue', value: valueOf(income, 'revenue', selectedPeriod) },
     { label: 'Net Income', value: valueOf(income, 'net_income', selectedPeriod) },
     { label: 'Total Assets', value: valueOf(balance, 'total_assets', selectedPeriod) },
     { label: 'Total Liabilities', value: valueOf(balance, 'total_liabilities', selectedPeriod) },
     { label: "Shareholders' Equity", value: valueOf(balance, 'total_equity', selectedPeriod) },
+    ...(cashflow
+      ? [{ label: 'Operating Cash Flow', value: valueOf(cashflow, 'net_cash_from_operating_activities', selectedPeriod) }]
+      : []),
   ];
 
   const balanced = validation?.balanced ?? null;

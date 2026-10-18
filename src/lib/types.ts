@@ -1,4 +1,4 @@
-import type { ParsedDocument } from '@/lib/engine/parser';
+import type { ParsedDocument, StatementType } from '@/lib/engine/parser';
 import type { AnalysisResult } from '@/lib/engine/analyzer';
 import type { RatioReport } from '@/lib/engine/ratios';
 
@@ -55,8 +55,6 @@ export interface SupplementalForm {
   earningsPerShare: string;
   marketCapitalization: string;
   enterpriseValue: string;
-  operatingCashFlow: string;
-  capitalExpenditures: string;
   ebitda: string;
   ebit: string;
   totalDebt: string;
@@ -66,7 +64,7 @@ export interface SupplementalForm {
 export interface CategoryOption {
   key: string;
   label: string;
-  statement: 'income' | 'balance';
+  statement: StatementType;
   section: string;
 }
 
@@ -76,7 +74,7 @@ export interface ManualLinePayload {
 }
 
 export interface ManualStatementPayload {
-  type: 'income' | 'balance';
+  type: StatementType;
   periods: string[];
   lines: ManualLinePayload[];
 }

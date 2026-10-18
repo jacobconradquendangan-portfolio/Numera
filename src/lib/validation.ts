@@ -159,9 +159,20 @@ export function validateManualStatements(statements: ManualStatementPayload[]): 
 
   const income = statements.find((statement) => statement.type === 'income');
   const balance = statements.find((statement) => statement.type === 'balance');
+  const cashflow = statements.find((statement) => statement.type === 'cashflow');
 
   if (!income) {
     issues.push(issue('warning', 'no-income', 'No income statement detected', 'Profitability and coverage ratios need income-statement line items.'));
+  }
+  if (!cashflow) {
+    issues.push(
+      issue(
+        'warning',
+        'no-cashflow',
+        'No cash flow statement detected',
+        'Operating-cash-flow and CAPEX ratios need cash-flow line items, or external inputs.'
+      )
+    );
   }
   if (!balance) {
     issues.push(issue('warning', 'no-balance', 'No balance sheet detected', 'Liquidity and leverage ratios need balance-sheet line items.'));

@@ -11,6 +11,7 @@ import {
 export interface AnalyzerOptions {
   incomeBase?: FinancialCategory;
   balanceBase?: FinancialCategory;
+  cashflowBase?: FinancialCategory;
   includeDerived?: boolean;
   includeEmptyValues?: boolean;
 }
@@ -18,6 +19,7 @@ export interface AnalyzerOptions {
 interface ResolvedAnalyzerOptions {
   incomeBase: FinancialCategory;
   balanceBase: FinancialCategory;
+  cashflowBase: FinancialCategory;
   includeDerived: boolean;
   includeEmptyValues: boolean;
 }
@@ -81,16 +83,19 @@ export interface AnalysisResult {
   vertical: {
     income: VerticalAnalysis | null;
     balance: VerticalAnalysis | null;
+    cashflow: VerticalAnalysis | null;
   };
   horizontal: {
     income: HorizontalAnalysis | null;
     balance: HorizontalAnalysis | null;
+    cashflow: HorizontalAnalysis | null;
   };
 }
 
 const DEFAULT_ANALYZER_OPTIONS: ResolvedAnalyzerOptions = {
   incomeBase: 'revenue',
   balanceBase: 'total_assets',
+  cashflowBase: 'net_cash_from_operating_activities',
   includeDerived: true,
   includeEmptyValues: false,
 };
@@ -132,6 +137,7 @@ export function resolveAnalyzerOptions(options?: AnalyzerOptions): ResolvedAnaly
   return {
     incomeBase: options?.incomeBase ?? DEFAULT_ANALYZER_OPTIONS.incomeBase,
     balanceBase: options?.balanceBase ?? DEFAULT_ANALYZER_OPTIONS.balanceBase,
+    cashflowBase: options?.cashflowBase ?? DEFAULT_ANALYZER_OPTIONS.cashflowBase,
     includeDerived: options?.includeDerived ?? DEFAULT_ANALYZER_OPTIONS.includeDerived,
     includeEmptyValues: options?.includeEmptyValues ?? DEFAULT_ANALYZER_OPTIONS.includeEmptyValues,
   };
@@ -201,7 +207,12 @@ export function computeVerticalAnalysis(
 ): VerticalAnalysis {
   const resolved = resolveAnalyzerOptions(options);
   const { ordered, chronological } = orderPeriods(statement.periods);
-  const baseCategory = statement.type === 'income' ? resolved.incomeBase : resolved.balanceBase;
+  const baseCategory =
+    statement.type === 'income'
+      ? resolved.incomeBase
+      : statement.type === 'balance'
+        ? resolved.balanceBase
+        : resolved.cashflowBase;
   const baseLabel = DEFINITION_BY_CATEGORY.get(baseCategory)?.label ?? baseCategory;
   const warnings: string[] = [];
   const items = selectItems(statement, resolved);
@@ -353,17 +364,23 @@ export function computeHorizontalAnalysis(
 }
 
 export function analyzeStatements(
-  statements: { income: NormalizedStatement | null; balance: NormalizedStatement | null },
+  statements: {
+    income: NormalizedStatement | null;
+    balance: NormalizedStatement | null;
+    cashflow: NormalizedStatement | null;
+  },
   options?: AnalyzerOptions
 ): AnalysisResult {
   return {
     vertical: {
       income: statements.income ? computeVerticalAnalysis(statements.income, options) : null,
       balance: statements.balance ? computeVerticalAnalysis(statements.balance, options) : null,
+      cashflow: statements.cashflow ? computeVerticalAnalysis(statements.cashflow, options) : null,
     },
     horizontal: {
       income: statements.income ? computeHorizontalAnalysis(statements.income, options) : null,
       balance: statements.balance ? computeHorizontalAnalysis(statements.balance, options) : null,
+      cashflow: statements.cashflow ? computeHorizontalAnalysis(statements.cashflow, options) : null,
     },
   };
 }

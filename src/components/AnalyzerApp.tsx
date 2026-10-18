@@ -32,8 +32,6 @@ const EMPTY_SUPPLEMENTAL: SupplementalForm = {
   earningsPerShare: '',
   marketCapitalization: '',
   enterpriseValue: '',
-  operatingCashFlow: '',
-  capitalExpenditures: '',
   ebitda: '',
   ebit: '',
   totalDebt: '',
@@ -167,6 +165,7 @@ export default function AnalyzerApp() {
     return (
       result.analysis.vertical.balance?.periods ??
       result.analysis.vertical.income?.periods ??
+      result.analysis.vertical.cashflow?.periods ??
       [result.ratios.period]
     );
   }, [result]);
@@ -187,13 +186,19 @@ export default function AnalyzerApp() {
     if (!result) return { errors: [], warnings: [] };
     const errors: BannerItem[] = [];
     const warnings: BannerItem[] = [];
-    const { income, balance } = result.document.statements;
+    const { income, balance, cashflow } = result.document.statements;
 
     if (!balance) {
       warnings.push({ label: 'No balance sheet detected.', detail: 'Liquidity and leverage ratios may be unavailable.' });
     }
     if (!income) {
       warnings.push({ label: 'No income statement detected.', detail: 'Profitability and coverage ratios may be unavailable.' });
+    }
+    if (!cashflow) {
+      warnings.push({
+        label: 'No cash flow statement detected.',
+        detail: 'Operating cash flow and CAPEX ratios may be unavailable — add a cash flow statement or supply them as external inputs.',
+      });
     }
 
     for (const entry of result.document.validations) {
@@ -202,7 +207,11 @@ export default function AnalyzerApp() {
       }
     }
 
-    const unrecognised = [...(income?.unmappedLabels ?? []), ...(balance?.unmappedLabels ?? [])];
+    const unrecognised = [
+      ...(income?.unmappedLabels ?? []),
+      ...(balance?.unmappedLabels ?? []),
+      ...(cashflow?.unmappedLabels ?? []),
+    ];
     if (unrecognised.length) {
       const shown = unrecognised.slice(0, 8).join(', ');
       warnings.push({
@@ -387,6 +396,7 @@ export default function AnalyzerApp() {
             validation={validation}
             income={result.document.statements.income}
             balance={result.document.statements.balance}
+            cashflow={result.document.statements.cashflow}
             selectedPeriod={selectedPeriod}
             unitMultiplier={result.ratios.unitMultiplier}
           />
@@ -414,6 +424,16 @@ export default function AnalyzerApp() {
               subtitle="Vertical (percent of total assets) & horizontal (period-over-period)"
               vertical={result.analysis.vertical.balance}
               horizontal={result.analysis.horizontal.balance}
+              selectedPeriod={selectedPeriod}
+            />
+          ) : null}
+
+          {result.analysis.vertical.cashflow && result.analysis.horizontal.cashflow ? (
+            <AnalysisTables
+              title="Cash Flow Statement"
+              subtitle="Vertical (percent of operating cash flow) & horizontal (period-over-period)"
+              vertical={result.analysis.vertical.cashflow}
+              horizontal={result.analysis.horizontal.cashflow}
               selectedPeriod={selectedPeriod}
             />
           ) : null}

@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 
-export type StatementType = 'income' | 'balance';
+export type StatementType = 'income' | 'balance' | 'cashflow';
 
 export type Section =
   | 'revenue'
@@ -17,7 +17,11 @@ export type Section =
   | 'total_liabilities'
   | 'equity'
   | 'total_equity'
-  | 'liabilities_and_equity';
+  | 'liabilities_and_equity'
+  | 'operating_activities'
+  | 'investing_activities'
+  | 'financing_activities'
+  | 'cash_summary';
 
 export type FinancialCategory =
   | 'revenue'
@@ -63,7 +67,13 @@ export type FinancialCategory =
   | 'treasury_stock'
   | 'other_equity'
   | 'total_equity'
-  | 'total_liabilities_and_equity';
+  | 'total_liabilities_and_equity'
+  | 'net_cash_from_operating_activities'
+  | 'net_cash_from_investing_activities'
+  | 'net_cash_from_financing_activities'
+  | 'capital_expenditures'
+  | 'dividends_paid'
+  | 'net_change_in_cash';
 
 export type DocumentFormat = 'pdf' | 'xlsx' | 'csv' | 'text' | 'manual';
 
@@ -125,6 +135,7 @@ export interface ParsedDocument {
   statements: {
     income: NormalizedStatement | null;
     balance: NormalizedStatement | null;
+    cashflow: NormalizedStatement | null;
   };
   validations: BalanceSheetValidation[];
   warnings: string[];
@@ -740,6 +751,111 @@ const TAXONOMY: CategoryDefinition[] = [
     ],
     total: true,
   },
+  {
+    key: 'net_cash_from_operating_activities',
+    statement: 'cashflow',
+    section: 'operating_activities',
+    label: 'Net Cash from Operating Activities',
+    synonyms: [
+      'net cash from operating activities',
+      'net cash provided by operating activities',
+      'net cash flows from operating activities',
+      'net cash generated from operating activities',
+      'net cash flow from operating activities',
+      'net cash provided by used in operating activities',
+      'cash flows from operating activities',
+      'cash flow from operating activities',
+      'net cash from operations',
+      'cash flow from operations',
+      'cash from operations',
+      'operating cash flow',
+      'operating activities',
+    ],
+    total: true,
+  },
+  {
+    key: 'net_cash_from_investing_activities',
+    statement: 'cashflow',
+    section: 'investing_activities',
+    label: 'Net Cash from Investing Activities',
+    synonyms: [
+      'net cash from investing activities',
+      'net cash used in investing activities',
+      'net cash flows from investing activities',
+      'net cash used for investing activities',
+      'cash flows from investing activities',
+      'net cash from investing',
+      'investing activities',
+    ],
+    total: true,
+  },
+  {
+    key: 'capital_expenditures',
+    statement: 'cashflow',
+    section: 'investing_activities',
+    label: 'Capital Expenditures',
+    synonyms: [
+      'capital expenditures',
+      'capital expenditure',
+      'purchases of property plant and equipment',
+      'purchase of property plant and equipment',
+      'purchases of property and equipment',
+      'purchase of property and equipment',
+      'payments for property plant and equipment',
+      'payments to acquire property plant and equipment',
+      'additions to property plant and equipment',
+      'acquisition of property plant and equipment',
+      'capital spending',
+      'capex',
+    ],
+  },
+  {
+    key: 'net_cash_from_financing_activities',
+    statement: 'cashflow',
+    section: 'financing_activities',
+    label: 'Net Cash from Financing Activities',
+    synonyms: [
+      'net cash from financing activities',
+      'net cash provided by financing activities',
+      'net cash used in financing activities',
+      'net cash flows from financing activities',
+      'net cash provided by used in financing activities',
+      'cash flows from financing activities',
+      'net cash from financing',
+      'financing activities',
+    ],
+    total: true,
+  },
+  {
+    key: 'dividends_paid',
+    statement: 'cashflow',
+    section: 'financing_activities',
+    label: 'Dividends Paid',
+    synonyms: [
+      'dividends paid',
+      'dividend paid',
+      'payment of dividends',
+      'payments of dividends',
+      'cash dividends paid',
+      'dividends',
+    ],
+  },
+  {
+    key: 'net_change_in_cash',
+    statement: 'cashflow',
+    section: 'cash_summary',
+    label: 'Net Change in Cash',
+    synonyms: [
+      'net change in cash',
+      'net change in cash and cash equivalents',
+      'net increase decrease in cash',
+      'net increase decrease in cash and cash equivalents',
+      'net increase in cash',
+      'net decrease in cash',
+      'net change in cash cash equivalents',
+    ],
+    total: true,
+  },
 ];
 
 const TAXONOMY_INDEX = new Map<FinancialCategory, number>();
@@ -1063,7 +1179,7 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
 
   const unmapped: string[] = [];
   const items = new Map<FinancialCategory, NormalizedLineItem>();
-  const statementScores: Record<StatementType, number> = { income: 0, balance: 0 };
+  const statementScores: Record<StatementType, number> = { income: 0, balance: 0, cashflow: 0 };
 
   for (const parsed of parsedRows) {
     const match = matchCategory(parsed.label, options.minMatchConfidence);
@@ -1110,10 +1226,10 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
   let type: StatementType;
   if (options.hint) {
     type = options.hint;
-  } else if (statementScores.balance === statementScores.income) {
-    type = statementScores.balance > 0 ? 'balance' : 'income';
   } else {
-    type = statementScores.balance > statementScores.income ? 'balance' : 'income';
+    type = (Object.keys(statementScores) as StatementType[]).reduce((best, candidate) =>
+      statementScores[candidate] > statementScores[best] ? candidate : best
+    );
   }
 
   return {
@@ -1222,7 +1338,8 @@ function sectionCategories(section: Section): FinancialCategory[] {
 
 function applyDerived(statement: NormalizedStatement): NormalizedStatement {
   if (statement.type === 'income') return applyIncomeDerived(statement);
-  return applyBalanceDerived(statement);
+  if (statement.type === 'balance') return applyBalanceDerived(statement);
+  return applyCashflowDerived(statement);
 }
 
 function applyIncomeDerived(statement: NormalizedStatement): NormalizedStatement {
@@ -1305,6 +1422,25 @@ function applyBalanceDerived(statement: NormalizedStatement): NormalizedStatemen
     }
   }
 
+  return finalizeStatement(statement, items);
+}
+
+function applyCashflowDerived(statement: NormalizedStatement): NormalizedStatement {
+  const items = new Map(statement.lineItems.map((item) => [item.category, item] as const));
+  for (const period of statement.periods) {
+    if (getValue(items, 'net_change_in_cash', period) !== null) continue;
+    const operating = getValue(items, 'net_cash_from_operating_activities', period);
+    const investing = getValue(items, 'net_cash_from_investing_activities', period);
+    const financing = getValue(items, 'net_cash_from_financing_activities', period);
+    if (operating !== null || investing !== null || financing !== null) {
+      addDerivedItem(
+        items,
+        'net_change_in_cash',
+        period,
+        roundValue((operating ?? 0) + (investing ?? 0) + (financing ?? 0))
+      );
+    }
+  }
   return finalizeStatement(statement, items);
 }
 
@@ -1560,8 +1696,10 @@ function assembleDocument(
 
   const income = mergeByType(intermediates, 'income');
   const balance = mergeByType(intermediates, 'balance');
+  const cashflow = mergeByType(intermediates, 'cashflow');
   const derivedIncome = income ? applyDerived(income) : null;
   const derivedBalance = balance ? applyDerived(balance) : null;
+  const derivedCashflow = cashflow ? applyDerived(cashflow) : null;
 
   const validations = derivedBalance ? validateBalanceSheet(derivedBalance, options) : [];
   const unbalanced = validations.filter((validation) => !validation.balanced && validation.difference !== null);
@@ -1574,6 +1712,7 @@ function assembleDocument(
     statements: {
       income: derivedIncome,
       balance: derivedBalance,
+      cashflow: derivedCashflow,
     },
     validations,
     warnings,

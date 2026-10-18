@@ -20,15 +20,13 @@ const FIELDS: { key: keyof SupplementalForm; label: string; group: string; hint:
   { key: 'earningsPerShare', label: 'EPS (override)', group: 'Market', hint: 'optional' },
   { key: 'marketCapitalization', label: 'Market Cap', group: 'Market', hint: 'optional' },
   { key: 'enterpriseValue', label: 'Enterprise Value', group: 'Market', hint: 'optional' },
-  { key: 'operatingCashFlow', label: 'Operating Cash Flow', group: 'Cash Flow', hint: 'from CFS' },
-  { key: 'capitalExpenditures', label: 'Capital Expenditures', group: 'Cash Flow', hint: 'from CFS' },
   { key: 'totalDebt', label: 'Total Debt (override)', group: 'Debt & Cash', hint: 'optional' },
   { key: 'cashAndEquivalents', label: 'Cash (override)', group: 'Debt & Cash', hint: 'optional' },
   { key: 'ebitda', label: 'EBITDA (override)', group: 'Overrides', hint: 'optional' },
   { key: 'ebit', label: 'EBIT (override)', group: 'Overrides', hint: 'optional' },
 ];
 
-const GROUPS = ['Market', 'Cash Flow', 'Debt & Cash', 'Overrides'];
+const GROUPS = ['Market', 'Debt & Cash', 'Overrides'];
 
 export default function SupplementalPanel({
   values,
@@ -51,8 +49,8 @@ export default function SupplementalPanel({
             </svg>
           </span>
           <span>
-            <span className="block font-display text-lg text-paper">Market &amp; cash-flow inputs</span>
-            <span className="rule-label">Valuation, cash-flow inputs and day-count basis</span>
+            <span className="block font-display text-lg text-paper">Market inputs</span>
+            <span className="rule-label">Valuation and override inputs plus the day-count basis</span>
           </span>
         </span>
         <span className="rule-label">optional</span>

@@ -186,7 +186,7 @@ export default function ReportDocument({ result, scope, selectedPeriod, filename
         </div>
       </Section>
 
-      {report.incomeVertical || report.balanceVertical ? (
+      {report.incomeVertical || report.balanceVertical || report.cashflowVertical ? (
         <Section index="02" title="Vertical analysis" subtitle="percent of base">
           {report.incomeVertical ? (
             <div className="mb-4">
@@ -195,15 +195,21 @@ export default function ReportDocument({ result, scope, selectedPeriod, filename
             </div>
           ) : null}
           {report.balanceVertical ? (
-            <div>
+            <div className={report.cashflowVertical ? 'mb-4' : undefined}>
               <p className="rule-label mb-1.5">Balance sheet · percent of total assets</p>
               <Table table={report.balanceVertical} />
+            </div>
+          ) : null}
+          {report.cashflowVertical ? (
+            <div>
+              <p className="rule-label mb-1.5">Cash flow statement · percent of operating cash flow</p>
+              <Table table={report.cashflowVertical} />
             </div>
           ) : null}
         </Section>
       ) : null}
 
-      {report.incomeHorizontal || report.balanceHorizontal ? (
+      {report.incomeHorizontal || report.balanceHorizontal || report.cashflowHorizontal ? (
         <Section index="03" title="Horizontal analysis" subtitle="period-over-period change">
           {report.incomeHorizontal ? (
             <div className="mb-4">
@@ -212,9 +218,15 @@ export default function ReportDocument({ result, scope, selectedPeriod, filename
             </div>
           ) : null}
           {report.balanceHorizontal ? (
-            <div>
+            <div className={report.cashflowHorizontal ? 'mb-4' : undefined}>
               <p className="rule-label mb-1.5">Balance sheet</p>
               <Table table={report.balanceHorizontal} />
+            </div>
+          ) : null}
+          {report.cashflowHorizontal ? (
+            <div>
+              <p className="rule-label mb-1.5">Cash flow statement</p>
+              <Table table={report.cashflowHorizontal} />
             </div>
           ) : null}
         </Section>
