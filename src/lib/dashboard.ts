@@ -134,6 +134,40 @@ export function ratioFavoursUp(id: string): boolean | null {
 
 export type RatioTone = 'pos' | 'neg' | 'flat';
 
+export type RatioVerdict = 'strong' | 'weak' | null;
+
+const VERDICT_RULES: Record<string, { strong: (value: number) => boolean; weak: (value: number) => boolean }> = {
+  'current-ratio': { strong: (value) => value >= 2, weak: (value) => value < 1 },
+  'quick-ratio': { strong: (value) => value >= 1, weak: (value) => value < 1 },
+  'cash-ratio': { strong: (value) => value >= 1, weak: (value) => value < 0.2 },
+  'operating-cash-flow-ratio': { strong: (value) => value >= 1, weak: (value) => value < 1 },
+  'times-interest-earned': { strong: (value) => value >= 3, weak: (value) => value < 2 },
+  'tie-cash-basis': { strong: (value) => value >= 3, weak: (value) => value < 2 },
+  'capex-to-operating-cash': { strong: (value) => value <= 1, weak: (value) => value > 1 },
+  'net-profit-margin': { strong: (value) => value >= 10, weak: (value) => value < 5 },
+  'gross-margin': { strong: (value) => value >= 20, weak: (value) => value < 5 },
+  'operating-margin': { strong: (value) => value >= 10, weak: (value) => value < 0 },
+  'return-on-equity': { strong: (value) => value >= 15, weak: (value) => value < 0 },
+  'return-on-assets': { strong: (value) => value >= 5, weak: (value) => value < 0 },
+  'return-on-capital-employed': { strong: (value) => value >= 10, weak: (value) => value < 0 },
+  'debt-to-equity': { strong: (value) => value <= 1, weak: (value) => value > 2 },
+  'debt-ratio': { strong: (value) => value <= 40, weak: (value) => value > 60 },
+  'equity-ratio': { strong: (value) => value >= 50, weak: (value) => value < 30 },
+  'financial-leverage': { strong: (value) => value <= 2, weak: (value) => value > 3 },
+  'ar-days': { strong: (value) => value <= 30, weak: (value) => value > 60 },
+  'inventory-days': { strong: (value) => value <= 30, weak: (value) => value > 90 },
+  'defensive-interval-ratio': { strong: (value) => value >= 90, weak: (value) => value < 30 },
+};
+
+export function ratioVerdict(id: string, value: number | null | undefined): RatioVerdict {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  const rule = VERDICT_RULES[id];
+  if (!rule) return null;
+  if (rule.strong(value)) return 'strong';
+  if (rule.weak(value)) return 'weak';
+  return null;
+}
+
 export function movementTone(id: string, current: number | null, prior: number | null): RatioTone | null {
   const favoursUp = ratioFavoursUp(id);
   if (favoursUp === null || current === null || prior === null) return null;

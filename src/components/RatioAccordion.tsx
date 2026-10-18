@@ -2,6 +2,7 @@
 
 import type { RatioCategory, RatioReport, RatioResult } from '@/lib/types';
 import { cx, formatCompact, formatUnitValue } from '@/lib/format';
+import { movementTone, ratioVerdict, type RatioTone, type RatioVerdict } from '@/lib/dashboard';
 
 const CATEGORY_META: Record<RatioCategory, { title: string; blurb: string }> = {
   liquidity: { title: 'Liquidity', blurb: 'Ability to meet short-term obligations' },
@@ -20,6 +21,7 @@ const AVAILABILITY_TONE: Record<RatioResult['availability'], string> = {
 interface RatioHistoryPoint {
   period: string;
   display: string;
+  value: number | null;
   availability: RatioResult['availability'];
 }
 
@@ -84,6 +86,17 @@ function StepList({ steps }: { steps: RatioResult['steps'] }) {
   );
 }
 
+const VERDICT_HEADLINE: Record<Exclude<RatioVerdict, null>, string> = {
+  strong: 'text-pos',
+  weak: 'text-neg',
+};
+
+const MOVEMENT_HEADLINE: Record<Exclude<RatioTone, null>, string> = {
+  pos: 'text-pos',
+  neg: 'text-neg',
+  flat: 'text-muted',
+};
+
 function RatioCard({
   ratio,
   history,
@@ -94,6 +107,23 @@ function RatioCard({
   selectedPeriod: string;
 }) {
   const [lhs, rhs] = splitFormula(ratio.formula);
+  const verdict = ratioVerdict(ratio.id, ratio.value);
+  const priorIndex = history.findIndex((point) => point.period === selectedPeriod) - 1;
+  const priorValue = priorIndex >= 0 ? (history[priorIndex]?.value ?? null) : null;
+  const movement = movementTone(ratio.id, ratio.value, priorValue);
+  const headlineTone = verdict ?? movement;
+  const headlineTitle =
+    verdict === 'strong'
+      ? 'Reads strong against the widely published CFI reference level'
+      : verdict === 'weak'
+        ? 'Reads weak against the widely published CFI reference level'
+        : movement === 'pos'
+          ? 'Improved versus the prior period'
+          : movement === 'neg'
+            ? 'Softened versus the prior period'
+            : movement === 'flat'
+              ? 'Unchanged versus the prior period'
+              : undefined;
 
   return (
     <details className="acc panel overflow-hidden rounded-xl border-l-2 border-l-transparent transition-colors open:border-l-accentdim">
@@ -110,7 +140,19 @@ function RatioCard({
             <span className="rule-label hidden sm:inline">{ratio.id}</span>
           </span>
         </span>
-        <span className="tabular w-24 shrink-0 text-right text-xl text-accent sm:w-28">{ratio.display}</span>
+        <span
+          title={headlineTitle}
+          className={cx(
+            'tabular w-24 shrink-0 text-right text-xl sm:w-28',
+            headlineTone
+              ? verdict
+                ? VERDICT_HEADLINE[verdict]
+                : MOVEMENT_HEADLINE[movement as Exclude<RatioTone, null>]
+              : 'text-accent'
+          )}
+        >
+          {ratio.display}
+        </span>
       </summary>
 
       <div className="acc-body space-y-6 border-t border-line px-5 py-6">
@@ -247,7 +289,7 @@ export default function RatioAccordion({ reports, selectedPeriod }: { reports: R
   for (const report of reports) {
     for (const ratio of report.ratios) {
       const points = historyById.get(ratio.id) ?? [];
-      points.push({ period: report.period, display: ratio.display, availability: ratio.availability });
+      points.push({ period: report.period, display: ratio.display, value: ratio.value, availability: ratio.availability });
       historyById.set(ratio.id, points);
     }
   }

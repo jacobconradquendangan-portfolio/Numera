@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HEAT_IDS, DEFAULT_TREND_IDS, defaultDashboardState, movementTone, ratioFavoursUp } from '@/lib/dashboard';
+import { DEFAULT_HEAT_IDS, DEFAULT_TREND_IDS, defaultDashboardState, movementTone, ratioFavoursUp, ratioVerdict } from '@/lib/dashboard';
 
 describe('dashboard defaults', () => {
   it('starts both trends and heat table with no series picked', () => {
@@ -7,6 +7,32 @@ describe('dashboard defaults', () => {
     expect(DEFAULT_HEAT_IDS).toEqual([]);
     expect(defaultDashboardState().trendIds).toEqual([]);
     expect(defaultDashboardState().heatIds).toEqual([]);
+  });
+});
+
+describe('ratioVerdict', () => {
+  it('reads higher-is-better ratios against CFI reference levels', () => {
+    expect(ratioVerdict('current-ratio', 2.4)).toBe('strong');
+    expect(ratioVerdict('current-ratio', 0.8)).toBe('weak');
+    expect(ratioVerdict('current-ratio', 1.5)).toBeNull();
+    expect(ratioVerdict('net-profit-margin', 12)).toBe('strong');
+    expect(ratioVerdict('net-profit-margin', 3)).toBe('weak');
+    expect(ratioVerdict('times-interest-earned', 3.5)).toBe('strong');
+    expect(ratioVerdict('times-interest-earned', 1.5)).toBe('weak');
+  });
+
+  it('reads lower-is-better ratios in the opposite direction', () => {
+    expect(ratioVerdict('debt-to-equity', 0.6)).toBe('strong');
+    expect(ratioVerdict('debt-to-equity', 2.5)).toBe('weak');
+    expect(ratioVerdict('ar-days', 25)).toBe('strong');
+    expect(ratioVerdict('ar-days', 75)).toBe('weak');
+    expect(ratioVerdict('capex-to-operating-cash', 1.4)).toBe('weak');
+  });
+
+  it('leaves market multiples and missing values neutral', () => {
+    expect(ratioVerdict('pe-ratio', 18)).toBeNull();
+    expect(ratioVerdict('ev-to-ebitda', 9)).toBeNull();
+    expect(ratioVerdict('current-ratio', null)).toBeNull();
   });
 });
 

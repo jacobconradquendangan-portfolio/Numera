@@ -443,9 +443,18 @@ export default function AnalyzerApp() {
                 ))}
               </div>
               {activeView === 'analysis' ? (
-                <>
-                  <span className="tabular ml-auto hidden text-xs text-faint md:block">
-                    {result.document.source.format.toUpperCase()} · {result.document.source.tableCount} table(s)
+                <div className="ml-auto flex min-w-0 shrink items-center gap-2">
+                  <span
+                    title={
+                      result.document.source.filename
+                        ? `${result.document.source.format.toUpperCase()} · ${result.document.source.tableCount} table(s) · ${result.document.source.filename}`
+                        : undefined
+                    }
+                    className={cx(
+                      'tabular hidden min-w-0 shrink-0 text-right text-xs text-faint md:block max-w-[26rem] truncate whitespace-nowrap overflow-hidden overflow-ellipsis'
+                    )}
+                  >
+                    {result.document.source.format.toUpperCase()}
                     {result.document.source.filename ? ` · ${result.document.source.filename}` : ''}
                   </span>
                   <ExportMenu
@@ -453,7 +462,7 @@ export default function AnalyzerApp() {
                     selectedPeriod={selectedPeriod}
                     onPrint={setPrintScope}
                   />
-                </>
+                </div>
               ) : null}
             </div>
             <nav

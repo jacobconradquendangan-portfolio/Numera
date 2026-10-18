@@ -37,14 +37,14 @@ export default function ExportMenu({ periods, selectedPeriod, onPrint }: ExportM
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
         className={cx(
-          'inline-flex items-center gap-2 rounded-full border px-4 py-1.5 font-mono text-[0.7rem] uppercase tracking-[0.16em] transition',
+          'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 py-1.5 font-mono text-[0.7rem] uppercase tracking-[0.16em] transition',
           open
             ? 'border-accent bg-accent/10 text-accent'
             : 'border-line2 text-muted hover:border-accentdim hover:text-paper'
