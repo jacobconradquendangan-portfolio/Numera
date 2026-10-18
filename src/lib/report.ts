@@ -1,7 +1,7 @@
 import type { AnalyzeSuccess, DayCountBasis, VerticalAnalysis, HorizontalAnalysis } from '@/lib/types';
 import type { DocumentFormat, StatementType } from '@/lib/engine/parser';
 import type { RatioAvailability, RatioCategory, RatioReport } from '@/lib/engine/ratios';
-import { formatNumber, formatPercent, formatSignedPercent } from '@/lib/format';
+import { formatNumber, formatPercent, formatSignedPercent, formatUnitValue } from '@/lib/format';
 
 export type ReportScope = 'selected' | 'all';
 
@@ -303,7 +303,7 @@ function buildRatioPeriods(result: AnalyzeSuccess, periods: string[]): ReportPer
           steps: ratio.steps.map((step) => ({
             label: step.label,
             expression: step.expression,
-            value: step.value === null ? null : formatMetric(step.value),
+            value: step.value === null ? null : formatUnitValue(step.value, step.unit),
           })),
           inputs: ratio.inputs.map((input) => ({
             label: input.label,

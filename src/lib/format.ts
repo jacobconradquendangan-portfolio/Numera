@@ -13,7 +13,7 @@ export function formatCompact(value: number | null | undefined): string {
   return `${sign}${abs.toFixed(0)}`;
 }
 
-export type DisplayUnit = 'times' | 'percent' | 'days' | 'currency';
+export type DisplayUnit = 'times' | 'percent' | 'days' | 'currency' | 'ratio';
 
 export function formatUnitValue(
   value: number | null | undefined,
@@ -28,6 +28,8 @@ export function formatUnitValue(
       return `${value.toFixed(digits)} days`;
     case 'currency':
       return value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    case 'ratio':
+      return String(Number(value.toFixed(10)));
     default:
       return `${value.toFixed(digits)}x`;
   }

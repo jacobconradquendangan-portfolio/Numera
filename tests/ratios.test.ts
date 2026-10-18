@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseFinancialText } from '@/lib/engine/parser';
 import { computeRatiosForDocument } from '@/lib/engine/ratios';
 import type { RatioReport, RatioResult } from '@/lib/engine/ratios';
+import { formatUnitValue } from '@/lib/format';
 import { SAMPLE_TEXT } from '@/lib/sample';
 import { SAMPLE_SUPPLEMENTAL_NUMERIC } from './fixtures';
 
@@ -75,6 +76,17 @@ describe('CFI ratio engine', () => {
     expect(current.substitution).toContain('250,000');
     expect(current.steps.length).toBeGreaterThanOrEqual(3);
     expect(current.inputs.map((input) => input.key)).toContain('total_current_assets');
+  });
+
+  it('keeps the decimal ROE step as a raw ratio and the percentage as a separate step', () => {
+    const steps = ratio('return-on-equity').steps;
+    const decimal = steps.find((step) => step.label === 'ROE');
+    const percent = steps.find((step) => step.label === 'ROE (%)');
+    expect(decimal?.unit).toBe('ratio');
+    expect(decimal?.value).toBeCloseTo(0.2685314685, 9);
+    expect(formatUnitValue(decimal?.value ?? null, 'ratio')).toBe('0.2685314685');
+    expect(percent?.unit).toBe('percent');
+    expect(formatUnitValue(percent?.value ?? null, 'percent')).toBe('26.85%');
   });
 
   it('marks the revenue-proxy efficiency ratio as partial rather than unavailable', () => {

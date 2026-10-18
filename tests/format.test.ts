@@ -15,6 +15,12 @@ describe('formatUnitValue', () => {
     expect(formatUnitValue(1150, 'currency')).toBe('1,150.00');
   });
 
+  it('renders raw decimal fractions without a percent sign', () => {
+    expect(formatUnitValue(0.26853146853146854, 'ratio')).toBe('0.2685314685');
+    expect(formatUnitValue(0.4, 'ratio')).toBe('0.4');
+    expect(formatUnitValue(0, 'ratio')).toBe('0');
+  });
+
   it('returns a placeholder for missing values', () => {
     expect(formatUnitValue(null, 'times')).toBe('—');
     expect(formatUnitValue(undefined, 'percent')).toBe('—');

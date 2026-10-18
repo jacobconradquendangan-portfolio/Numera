@@ -8,7 +8,7 @@ import { orderPeriods } from './analyzer';
 
 export type RatioCategory = 'liquidity' | 'profitability' | 'leverage' | 'efficiency' | 'valuation';
 
-export type RatioUnit = 'times' | 'percent' | 'days' | 'currency';
+export type RatioUnit = 'times' | 'percent' | 'days' | 'currency' | 'ratio';
 
 export type RatioAvailability = 'computed' | 'partial' | 'unavailable';
 
@@ -329,6 +329,8 @@ function formatForUnit(value: number | null, unit: RatioUnit): string {
       return `${round(value, 2).toFixed(2)} days`;
     case 'currency':
       return formatFixed(value);
+    case 'ratio':
+      return String(Number(round(value, 10).toFixed(10)));
     default:
       return `${round(value, 2).toFixed(2)}x`;
   }
@@ -502,7 +504,7 @@ function makeResult(
     display: formatForUnit(payload.value, definition.unit),
     formula: definition.formula,
     substitution: payload.substitution,
-    steps: payload.steps.map((step) => ({ ...step, value: step.value === null ? null : round(step.value, 6) })),
+    steps: payload.steps.map((step) => ({ ...step, value: step.value === null ? null : round(step.value, 10) })),
     inputs: payload.inputs,
     notes,
     description: RATIO_DESCRIPTIONS[definition.id] ?? FALLBACK_DESCRIPTION,
@@ -999,7 +1001,7 @@ function ratioRoe(ctx: RatioContext): RatioResult {
           label: 'ROE',
           expression: `${formatNumber(netIncome.value)} / ${formatNumber(equity.value)}`,
           value: fraction,
-          unit: 'percent',
+          unit: 'ratio',
         },
         { label: 'ROE (%)', expression: formatForUnit(value, 'percent'), value, unit: 'percent' },
       ],
@@ -1037,7 +1039,7 @@ function ratioRoa(ctx: RatioContext): RatioResult {
           label: 'ROA',
           expression: `${formatNumber(netIncome.value)} / ${formatNumber(assets.value)}`,
           value: fraction,
-          unit: 'percent',
+          unit: 'ratio',
         },
         { label: 'ROA (%)', expression: formatForUnit(value, 'percent'), value, unit: 'percent' },
       ],
@@ -1084,7 +1086,7 @@ function ratioRoce(ctx: RatioContext): RatioResult {
           label: 'ROCE',
           expression: `${formatNumber(ebitResult.value)} / ${formatNumber(capitalEmployed)}`,
           value: fraction,
-          unit: 'percent',
+          unit: 'ratio',
         },
         { label: 'ROCE (%)', expression: formatForUnit(value, 'percent'), value, unit: 'percent' },
       ],
@@ -1121,7 +1123,7 @@ function marginResult(
           label: name,
           expression: `${formatNumber(numerator.value)} / ${formatNumber(revenue.value)}`,
           value: fraction,
-          unit: 'percent',
+          unit: 'ratio',
         },
         { label: `${name} (%)`, expression: formatForUnit(value, 'percent'), value, unit: 'percent' },
       ],
@@ -1247,7 +1249,7 @@ function ratioEquityRatio(ctx: RatioContext): RatioResult {
           label: 'Equity Ratio',
           expression: `${formatNumber(equity.value)} / ${formatNumber(assets.value)}`,
           value: fraction,
-          unit: 'percent',
+          unit: 'ratio',
         },
         { label: 'Equity Ratio (%)', expression: formatForUnit(value, 'percent'), value, unit: 'percent' },
       ],
@@ -1281,7 +1283,7 @@ function ratioDebtRatio(ctx: RatioContext): RatioResult {
           label: 'Debt Ratio',
           expression: `${formatNumber(liabilities.value)} / ${formatNumber(assets.value)}`,
           value: fraction,
-          unit: 'percent',
+          unit: 'ratio',
         },
         { label: 'Debt Ratio (%)', expression: formatForUnit(value, 'percent'), value, unit: 'percent' },
       ],
