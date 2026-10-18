@@ -65,11 +65,14 @@ export default function InsightsPanel({ insights }: InsightsPanelProps) {
 
   return (
     <section className="rise space-y-4">
-      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line pb-3">
-        <h2 className="font-display text-3xl text-paper">Financial health summary</h2>
-        <p className="rule-label">
-          Auto-generated from the computed ratios · {insights.period}
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-2 border-b border-line pb-3">
+        <div>
+          <h2 className="font-display text-3xl text-paper">Financial health summary</h2>
+          <p className="rule-label mt-1">Auto-generated from the computed ratios</p>
+        </div>
+        <span className="tabular rounded-sm border border-line2 px-2.5 py-1 text-[0.7rem] text-muted">
+          Period {insights.period}
+        </span>
       </header>
 
       <div
@@ -82,8 +85,7 @@ export default function InsightsPanel({ insights }: InsightsPanelProps) {
       >
         <p className="text-sm leading-relaxed text-paper sm:text-base">{insights.verdict}</p>
         <p className="rule-label mt-1">
-          {insights.strengths} strength{insights.strengths === 1 ? '' : 's'} · {insights.watches} to watch ·{' '}
-          {insights.insights.length} dimensions
+          {insights.strengths} strength{insights.strengths === 1 ? '' : 's'} · {insights.watches} to watch
         </p>
       </div>
 

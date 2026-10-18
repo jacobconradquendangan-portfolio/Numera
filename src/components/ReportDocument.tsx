@@ -190,7 +190,7 @@ export default function ReportDocument({ result, scope, selectedPeriod, filename
         <Section
           index="02"
           title="Financial health summary"
-          subtitle={`auto-generated · ${report.insights.period}`}
+          subtitle={`auto-generated from the computed ratios · period ${report.insights.period}`}
         >
           <p className="mb-3 text-[0.78rem] leading-relaxed text-paper">{report.insights.verdict}</p>
           <div className="space-y-3">
