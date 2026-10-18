@@ -96,14 +96,22 @@ export default function InsightsPanel({ insights }: InsightsPanelProps) {
       </div>
 
       {insights.references.length ? (
-        <footer className="rounded-2xl border border-line bg-panel px-6 py-5">
-          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-            <p className="rule-label">Sources</p>
-            <p className="font-body text-[0.78rem] italic leading-snug text-faint">
+        <details className="acc rounded-2xl border border-line bg-panel px-6 py-4">
+          <summary className="flex cursor-pointer list-none flex-wrap items-baseline justify-between gap-x-6 gap-y-1 outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            <span className="flex items-center gap-2">
+              <span className="rule-label">Sources</span>
+              <span className="tabular rounded-sm border border-line bg-panel2/60 px-1.5 py-0.5 font-mono text-[0.6rem] text-muted">
+                {insights.references.length}
+              </span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="chev text-faint" aria-hidden>
+                <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <span className="font-body text-[0.78rem] italic leading-snug text-faint">
               Corporate Finance Institute · {insights.referenceNote}
-            </p>
-          </div>
-          <ol className="flex flex-col gap-2">
+            </span>
+          </summary>
+          <ol className="acc-body mt-4 flex flex-col gap-2 border-t border-line/70 pt-4">
             {insights.references.map((reference, index) => {
               const path = reference.url.replace(/^https:\/\//, '');
               return (
@@ -127,7 +135,7 @@ export default function InsightsPanel({ insights }: InsightsPanelProps) {
               );
             })}
           </ol>
-        </footer>
+        </details>
       ) : null}
     </section>
   );
