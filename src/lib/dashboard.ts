@@ -20,7 +20,7 @@ export interface DashboardState {
   heatIds: string[];
 }
 
-export const DEFAULT_TREND_IDS = ['gross-margin', 'net-profit-margin', 'return-on-assets', 'return-on-equity'];
+export const DEFAULT_TREND_IDS: string[] = [];
 
 export const DEFAULT_COMPARISON_IDS = [
   'current-ratio',
@@ -45,7 +45,7 @@ export const DEFAULT_HEAT_IDS = [
 export const DASHBOARD_CATEGORIES: RatioCategory[] = ['liquidity', 'profitability', 'leverage', 'efficiency', 'valuation'];
 
 const STORAGE_KEY = 'numera-dashboard-state';
-const STATE_VERSION = 1;
+const STATE_VERSION = 2;
 
 export function defaultDashboardState(): DashboardState {
   return {

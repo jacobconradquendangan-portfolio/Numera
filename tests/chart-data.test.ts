@@ -274,4 +274,10 @@ describe('buildRatioTrendData with a selection', () => {
     const { series } = buildRatioTrendData(dashboardReports);
     expect(series.map((entry) => entry.key)).toEqual(['Gross margin', 'Net margin', 'ROA', 'ROE']);
   });
+
+  it('plots nothing when the selection is empty', () => {
+    const { series, data } = buildRatioTrendData(dashboardReports, []);
+    expect(series).toEqual([]);
+    expect(data).toHaveLength(dashboardReports.length);
+  });
 });

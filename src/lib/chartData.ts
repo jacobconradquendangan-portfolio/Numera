@@ -179,7 +179,7 @@ export function buildRatioTrendData(
 ): { data: RatioTrendPoint[]; series: RatioTrendSeries[] } {
   const nameById = ratioNameLookup(reports);
   let specs: { id: string; label: string; color: string }[];
-  if (selectedIds?.length) {
+  if (selectedIds) {
     specs = selectedIds.map((id, index) => ({
       id,
       label: nameById.get(id) ?? id,

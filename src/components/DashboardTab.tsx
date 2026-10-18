@@ -83,43 +83,77 @@ function PanelShell({
   );
 }
 
-function ChipToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function RatioPicker({
+  label,
+  groups,
+  activeIds,
+  onToggle,
+  onClear,
+}: {
+  label: string;
+  groups: { category: RatioCategory; items: { id: string; name: string }[] }[];
+  activeIds: string[];
+  onToggle: (id: string) => void;
+  onClear: () => void;
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cx(
-        'whitespace-nowrap rounded-sm border px-2.5 py-1 font-mono text-[0.62rem] uppercase tracking-[0.14em] transition',
-        active ? 'border-accent bg-accent/10 text-accent' : 'border-line2 text-muted hover:border-accentdim hover:text-paper'
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
-function ratioChips(
-  groups: { category: RatioCategory; items: { id: string; name: string }[] }[],
-  activeIds: string[],
-  onToggle: (id: string) => void
-): ReactNode {
-  return (
-    <div className="space-y-2">
-      {groups.map((group) => (
-        <div key={group.category} className="flex flex-wrap items-center gap-1.5">
-          <span className="rule-label mr-1 text-faint">{group.category}</span>
-          {group.items.map((item) => (
-            <ChipToggle
-              key={item.id}
-              label={item.name}
-              active={activeIds.includes(item.id)}
-              onClick={() => onToggle(item.id)}
-            />
-          ))}
-        </div>
-      ))}
-    </div>
+    <details className="relative group">
+      <summary className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-line2 px-2.5 py-1 font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted transition hover:border-accentdim hover:text-paper">
+        <span>{label}</span>
+        <span
+          className={cx(
+            'grid h-4 min-w-[1.1rem] place-items-center border px-1 font-mono text-[0.6rem] leading-none',
+            activeIds.length ? 'border-accent bg-accent/10 text-accent' : 'border-line2 text-faint'
+          )}
+        >
+          {activeIds.length}
+        </span>
+      </summary>
+      <div className="absolute right-0 top-full z-30 mt-2 hidden max-h-80 w-72 overflow-y-auto rounded-xl border border-line bg-ink p-3 shadow-2xl group-open:block">
+        {groups.map((group) => (
+          <div key={group.category} className="mb-2 last:mb-0">
+            <p className="rule-label mb-1 px-2 text-faint">{group.category}</p>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const active = activeIds.includes(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onToggle(item.id)}
+                    aria-pressed={active}
+                    className={cx(
+                      'flex w-full items-center justify-between gap-3 rounded-sm px-2 py-1.5 text-left text-sm transition hover:bg-panel',
+                      active ? 'text-paper' : 'text-muted hover:text-paper'
+                    )}
+                  >
+                    <span className="truncate">{item.name}</span>
+                    <span
+                      className={cx(
+                        'flex h-4 w-4 shrink-0 items-center justify-center border font-mono text-[0.6rem]',
+                        active ? 'border-accent bg-accent/20 text-accent' : 'border-line2 text-transparent'
+                      )}
+                      aria-hidden
+                    >
+                      ✓
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        {activeIds.length ? (
+          <button
+            type="button"
+            onClick={onClear}
+            className="mt-2 w-full rounded-sm border border-line2 px-2 py-1.5 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-faint transition hover:border-neg/60 hover:text-neg"
+          >
+            Clear selection
+          </button>
+        ) : null}
+      </div>
+    </details>
   );
 }
 
@@ -183,17 +217,38 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
   const toggleRatio = (key: 'trendIds' | 'comparisonIds' | 'heatIds', id: string) =>
     setState((current) => ({ ...current, [key]: toggleInList(current[key], id) }));
 
+  const clearRatio = (key: 'trendIds' | 'comparisonIds' | 'heatIds') =>
+    setState((current) => ({ ...current, [key]: [] }));
+
   const reset = () => setState(defaultDashboardState());
 
-  const trendPicker = state.panels.trends
-    ? ratioChips(availableGroups, state.trendIds, (id) => toggleRatio('trendIds', id))
-    : null;
-  const comparisonPicker = state.panels.margins
-    ? ratioChips(availableGroups, state.comparisonIds, (id) => toggleRatio('comparisonIds', id))
-    : null;
-  const heatPicker = state.panels.heat
-    ? ratioChips(availableGroups, state.heatIds, (id) => toggleRatio('heatIds', id))
-    : null;
+  const trendPicker = (
+    <RatioPicker
+      label="Series"
+      groups={availableGroups}
+      activeIds={state.trendIds}
+      onToggle={(id) => toggleRatio('trendIds', id)}
+      onClear={() => clearRatio('trendIds')}
+    />
+  );
+  const comparisonPicker = (
+    <RatioPicker
+      label="Series"
+      groups={availableGroups}
+      activeIds={state.comparisonIds}
+      onToggle={(id) => toggleRatio('comparisonIds', id)}
+      onClear={() => clearRatio('comparisonIds')}
+    />
+  );
+  const heatPicker = (
+    <RatioPicker
+      label="Ratios"
+      groups={availableGroups}
+      activeIds={state.heatIds}
+      onToggle={(id) => toggleRatio('heatIds', id)}
+      onClear={() => clearRatio('heatIds')}
+    />
+  );
 
   const periodChip = (
     <span className="rounded-sm border border-line2 px-2.5 py-1 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-paper">
@@ -292,32 +347,23 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
         ) : null}
 
         {state.panels.trends ? (
-          <PanelShell metaId="trends" span="xl:col-span-2">
-            <div className="space-y-4">
-              {trendPicker ? (
-                <>
-                  {trendPicker}
-                  <div className="border-t border-line/60 pt-4" />
-                </>
-              ) : null}
+          <PanelShell metaId="trends" span="xl:col-span-2" right={trendPicker}>
+            {trendData.series.length ? (
               <RatioTrendChart data={trendData.data} series={trendData.series} />
-            </div>
+            ) : (
+              <div className="flex h-80 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-line text-center">
+                <p className="text-sm text-muted">Nothing plotted yet</p>
+                <p className="rule-label">choose ratios under Series to trend them across periods</p>
+              </div>
+            )}
           </PanelShell>
         ) : null}
 
         {state.panels.margins ? (
-          <PanelShell metaId="margins" span="xl:col-span-2">
-            <div className="space-y-4">
-              {comparisonPicker ? (
-                <>
-                  {comparisonPicker}
-                  <div className="border-t border-line/60 pt-4" />
-                </>
-              ) : null}
-              <div className="grid gap-6 xl:grid-cols-2">
-                <CommonSizeChart data={commonSizeData} />
-                <RatioComparisonChart data={comparisonData} />
-              </div>
+          <PanelShell metaId="margins" span="xl:col-span-2" right={comparisonPicker}>
+            <div className="grid gap-6 xl:grid-cols-2">
+              <CommonSizeChart data={commonSizeData} />
+              <RatioComparisonChart data={comparisonData} />
             </div>
           </PanelShell>
         ) : null}
@@ -338,16 +384,8 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
         ) : null}
 
         {state.panels.heat ? (
-          <PanelShell metaId="heat" span="xl:col-span-2">
-            <div className="space-y-4">
-              {heatPicker ? (
-                <>
-                  {heatPicker}
-                  <div className="border-t border-line/60 pt-4" />
-                </>
-              ) : null}
-              <RatioHeatTable rows={heatRows} />
-            </div>
+          <PanelShell metaId="heat" span="xl:col-span-2" right={heatPicker}>
+            <RatioHeatTable rows={heatRows} />
           </PanelShell>
         ) : null}
       </div>
