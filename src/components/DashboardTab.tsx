@@ -47,6 +47,15 @@ const KPI_IDS = [
   'defensive-interval-ratio',
 ];
 
+const KPI_LABELS: Record<string, string> = {
+  'current-ratio': 'Current ratio',
+  'return-on-equity': 'Return on equity',
+  'debt-to-equity': 'Debt to equity',
+  'net-profit-margin': 'Net margin',
+  'ar-days': 'Receivable days',
+  'defensive-interval-ratio': 'Defensive interval',
+};
+
 function PanelShell({
   metaId,
   children,
@@ -252,17 +261,19 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
               {kpiRatios.map((ratio) => {
                 const prior = priorReport?.ratios.find((entry) => entry.id === ratio.id);
                 return (
-                  <div key={ratio.id} className="rounded-xl border border-line bg-panel px-4 py-3.5">
-                    <p className="rule-label mb-2 whitespace-nowrap">{ratio.name}</p>
+                  <div key={ratio.id} className="flex flex-col rounded-xl border border-line bg-panel px-4 py-3.5">
+                    <p className="rule-label truncate" title={ratio.name}>
+                      {KPI_LABELS[ratio.id] ?? ratio.name}
+                    </p>
                     <p
                       className={cx(
-                        'tabular text-2xl leading-tight',
+                        'tabular mt-2.5 whitespace-nowrap text-xl leading-none xl:text-2xl',
                         ratio.value === null ? 'text-faint' : 'text-paper'
                       )}
                     >
                       {ratio.display}
                     </p>
-                    <p className="mt-2 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-faint">
+                    <p className="mt-auto truncate pt-2.5 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-faint">
                       {prior ? `prior ${prior.display}` : ratio.category}
                     </p>
                   </div>

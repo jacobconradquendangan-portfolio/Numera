@@ -109,7 +109,12 @@ export default function Overview({ validation, income, balance, cashflow, select
           {figures.map((figure) => (
             <div key={figure.label} className="group rounded-xl border border-line bg-panel px-4 py-3.5">
               <p className="rule-label mb-2 whitespace-nowrap">{figure.label}</p>
-              <p className={cx('tabular text-2xl leading-tight', figure.value === null ? 'text-faint' : 'text-paper')}>
+              <p
+                className={cx(
+                  'tabular text-2xl leading-tight',
+                  figure.value === null ? 'text-faint' : figure.value < 0 ? 'text-neg' : 'text-pos'
+                )}
+              >
                 {formatCompact(figure.value)}
               </p>
               <p className="mt-2 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-faint">{figure.source}</p>
