@@ -159,15 +159,14 @@ export default function RatioHeatTable({ rows, selectedPeriod }: RatioHeatTableP
                       </div>
                     </div>
                   </td>
-                  {row.cells.map((cell, index) => {
+                  {row.cells.map((cell) => {
                     const scale = maxima.get(cell.period) ?? 1;
                     const magnitude = cell.value === null ? 0 : Math.min(Math.abs(cell.value) / scale, 1);
-                    const isFocus = index === focusIndex;
                     const title = cell.change === null
                       ? `${row.label} · ${cell.period}: ${cell.display} (no prior period)`
                       : `${row.label} · ${cell.period}: ${cell.display} (${cell.change >= 0 ? '+' : '−'}${Math.abs(cell.change).toFixed(2)}${cell.changePct === null ? '' : `, ${cell.changePct >= 0 ? '+' : ''}${cell.changePct.toFixed(1)}%`})`;
                     return (
-                      <td key={`${row.id}-${cell.period}`} title={title} className={cx('border-b border-line/60 px-2 py-2.5 text-right align-middle', cellShade(cell.tone), isFocus && 'bg-panel2/50')}>
+                      <td key={`${row.id}-${cell.period}`} title={title} className={cx('border-b border-line/60 px-2 py-2.5 text-right align-middle', cellShade(cell.tone))}>
                         <span className={cx('tabular font-mono text-[0.8rem]', cell.value === null ? 'text-faint' : 'text-paper')}>{cell.display}</span>
                         <span className="mt-1 flex items-center justify-end gap-1.5">
                           <span className={cx('inline-block h-1.5 w-1.5 rounded-full', cell.tone ? TONE_DOT[cell.tone] : 'bg-transparent')} aria-hidden />

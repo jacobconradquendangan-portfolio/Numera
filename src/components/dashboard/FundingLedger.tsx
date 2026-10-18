@@ -44,23 +44,16 @@ export default function FundingLedger({ data, selectedPeriod, equityRatio, debtT
       <ul>
         {data.map((row) => {
           const assets = totalAssets(row);
-          const isFocus = row.period === focused.period;
           const creditors = row.Liabilities === null ? null : Math.max(row.Liabilities, 0);
           const owners = row.Equity === null ? null : Math.max(row.Equity, 0);
           const ownersShare = assets === null || assets === 0 || row.Equity === null ? null : (row.Equity / assets) * 100;
           return (
             <li
               key={row.period}
-              className={cx(
-                'grid grid-cols-[3.6rem_1fr_auto] items-center gap-x-3 border-b border-line/70 py-2 last:border-b-0',
-                isFocus && '-mx-2 border-l-2 border-l-accent bg-panel2/50 px-2'
-              )}
+              className="grid grid-cols-[3.6rem_1fr_auto] items-center gap-x-3 border-b border-line/70 py-2 last:border-b-0"
             >
               <span
-                className={cx(
-                  'font-mono text-[0.7rem] uppercase tracking-[0.12em]',
-                  isFocus ? 'text-paper' : 'text-muted'
-                )}
+                className="font-mono text-[0.7rem] uppercase tracking-[0.12em] text-muted"
               >
                 {row.period}
               </span>

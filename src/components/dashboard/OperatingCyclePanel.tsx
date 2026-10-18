@@ -47,20 +47,13 @@ export default function OperatingCyclePanel({ data, selectedPeriod, defensiveInt
     <div>
       <ul>
         {rowsWithCycle.map((row) => {
-          const isFocus = row.period === focused.period;
           return (
             <li
               key={row.period}
-              className={cx(
-                'grid grid-cols-[3.6rem_1fr_auto] items-center gap-x-3 border-b border-line/70 py-2 last:border-b-0',
-                isFocus && '-mx-2 border-l-2 border-l-accent bg-panel2/50 px-2'
-              )}
+              className="grid grid-cols-[3.6rem_1fr_auto] items-center gap-x-3 border-b border-line/70 py-2 last:border-b-0"
             >
               <span
-                className={cx(
-                  'font-mono text-[0.7rem] uppercase tracking-[0.12em]',
-                  isFocus ? 'text-paper' : 'text-muted'
-                )}
+                className="font-mono text-[0.7rem] uppercase tracking-[0.12em] text-muted"
               >
                 {row.period}
               </span>
@@ -82,10 +75,7 @@ export default function OperatingCyclePanel({ data, selectedPeriod, defensiveInt
                   {row.arDays === null ? '—' : row.arDays.toFixed(1)} + {row.inventoryDays === null ? '—' : row.inventoryDays.toFixed(1)}
                 </span>
                 <span
-                  className={cx(
-                    'tabular w-24 whitespace-nowrap text-right font-mono text-sm',
-                    isFocus ? 'text-paper' : 'text-muted'
-                  )}
+                  className="tabular w-24 whitespace-nowrap text-right font-mono text-sm text-muted"
                 >
                   {formatUnitValue(row.operatingCycle, 'days', 1)}
                 </span>
