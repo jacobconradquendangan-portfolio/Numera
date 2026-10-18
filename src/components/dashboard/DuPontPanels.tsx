@@ -3,6 +3,7 @@
 import { Fragment } from 'react';
 import type { DuPontPoint } from '@/lib/chartData';
 import { cx, formatUnitValue, type DisplayUnit } from '@/lib/format';
+import DuPontTrendChart from './DuPontTrendChart';
 
 interface DuPontPanelsProps {
   data: DuPontPoint[];
@@ -113,60 +114,67 @@ export default function DuPontPanels({ data, selectedPeriod }: DuPontPanelsProps
       </div>
 
       {data.length > 1 ? (
-        <div>
-          <p className="rule-label mb-2">Across periods</p>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[30rem] border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="rule-label border-b border-line pb-2 text-left font-normal">Period</th>
-                  {FACTORS.map((factor) => (
-                    <th
-                      key={factor.label}
-                      className="rule-label border-b border-line border-l border-l-line/50 px-3 pb-2 text-right font-normal"
-                    >
-                      {factor.label}
+        <div className="grid gap-6 xl:grid-cols-2">
+          <div>
+            <p className="rule-label mb-2">Factor trend</p>
+            <DuPontTrendChart data={data} highlightPeriod={focused.period} />
+          </div>
+
+          <div>
+            <p className="rule-label mb-2">Across periods</p>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[26rem] border-collapse text-sm">
+                <thead>
+                  <tr>
+                    <th className="rule-label border-b border-line pb-2 text-left font-normal">Period</th>
+                    {FACTORS.map((factor) => (
+                      <th
+                        key={factor.label}
+                        className="rule-label border-b border-line border-l border-l-line/50 px-3 pb-2 text-right font-normal"
+                      >
+                        {factor.label}
+                      </th>
+                    ))}
+                    <th className="rule-label border-b border-line border-l border-l-line/50 px-3 pb-2 text-right font-normal">
+                      Return on equity
                     </th>
-                  ))}
-                  <th className="rule-label border-b border-line border-l border-l-line/50 px-3 pb-2 text-right font-normal">
-                    Return on equity
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((row) => {
-                  const isFocused = row.period === focused.period;
-                  return (
-                    <tr key={row.period} className={cx(isFocused && 'bg-accent/[0.05]')}>
-                      <td
-                        className={cx(
-                          'tabular border-b border-line/60 py-2',
-                          isFocused ? 'font-medium text-paper' : 'text-muted'
-                        )}
-                      >
-                        {row.period}
-                      </td>
-                      {FACTORS.map((factor) => (
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((row) => {
+                    const isFocused = row.period === focused.period;
+                    return (
+                      <tr key={row.period} className={cx(isFocused && 'bg-accent/[0.05]')}>
                         <td
-                          key={factor.label}
-                          className="tabular border-b border-line/60 border-l border-l-line/40 px-3 py-2 text-right text-muted"
+                          className={cx(
+                            'tabular border-b border-line/60 py-2',
+                            isFocused ? 'font-medium text-paper' : 'text-muted'
+                          )}
                         >
-                          {display(factor.pick(row), factor.unit)}
+                          {row.period}
                         </td>
-                      ))}
-                      <td
-                        className={cx(
-                          'tabular border-b border-line/60 border-l border-l-line/40 px-3 py-2 text-right',
-                          isFocused ? 'font-medium text-accent' : 'text-accent/80'
-                        )}
-                      >
-                        {display(row.roe, 'percent')}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        {FACTORS.map((factor) => (
+                          <td
+                            key={factor.label}
+                            className="tabular border-b border-line/60 border-l border-l-line/40 px-3 py-2 text-right text-muted"
+                          >
+                            {display(factor.pick(row), factor.unit)}
+                          </td>
+                        ))}
+                        <td
+                          className={cx(
+                            'tabular border-b border-line/60 border-l border-l-line/40 px-3 py-2 text-right',
+                            isFocused ? 'font-medium text-accent' : 'text-accent/80'
+                          )}
+                        >
+                          {display(row.roe, 'percent')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       ) : null}
