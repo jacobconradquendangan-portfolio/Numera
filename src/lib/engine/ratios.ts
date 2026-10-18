@@ -307,6 +307,12 @@ function formatNumber(value: number | null): string {
   return sign + Math.abs(rounded).toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 
+function formatFixed(value: number): string {
+  const sign = value < 0 ? '-' : '';
+  const abs = Math.abs(round(value, 2));
+  return `${sign}${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function formatForUnit(value: number | null, unit: RatioUnit): string {
   if (value === null) return 'n/a';
   switch (unit) {
@@ -315,9 +321,9 @@ function formatForUnit(value: number | null, unit: RatioUnit): string {
     case 'days':
       return `${round(value, 2).toFixed(2)} days`;
     case 'currency':
-      return formatNumber(value);
+      return formatFixed(value);
     default:
-      return `${round(value, 4).toString()}x`;
+      return `${round(value, 2).toFixed(2)}x`;
   }
 }
 

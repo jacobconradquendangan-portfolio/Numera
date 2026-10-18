@@ -1,7 +1,7 @@
 'use client';
 
 import type { RatioCategory, RatioReport, RatioResult } from '@/lib/types';
-import { cx, formatCompact } from '@/lib/format';
+import { cx, formatCompact, formatUnitValue } from '@/lib/format';
 
 const CATEGORY_META: Record<RatioCategory, { title: string; index: string; blurb: string }> = {
   liquidity: { title: 'Liquidity', index: '01', blurb: 'Ability to meet short-term obligations' },
@@ -72,7 +72,7 @@ function StepList({ steps }: { steps: RatioResult['steps'] }) {
                 <p className="tabular break-words text-sm leading-relaxed text-paper">
                   {step.expression}
                   {step.value !== null ? (
-                    <span className={last ? 'text-accent' : 'text-muted'}> = {formatCompact(step.value)}</span>
+                    <span className={last ? 'text-accent' : 'text-muted'}> = {formatUnitValue(step.value, step.unit)}</span>
                   ) : null}
                 </p>
               </div>

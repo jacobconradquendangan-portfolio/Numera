@@ -95,7 +95,7 @@ export default function CommonSizeChart({ data }: CommonSizeChartProps) {
               cursor={{ fill: 'rgba(35,33,26,0.04)' }}
               contentStyle={TOOLTIP_STYLE}
               labelStyle={{ color: CHART_COLORS.paper, fontWeight: 600, marginBottom: 4 }}
-              formatter={(value, name) => [`${Number(value).toFixed(1)}% of revenue`, String(name)]}
+              formatter={(value, name) => [`${Number(value).toFixed(2)}% of revenue`, String(name)]}
             />
             {COMMON_SIZE_SERIES.map((series, index) => (
               <Bar

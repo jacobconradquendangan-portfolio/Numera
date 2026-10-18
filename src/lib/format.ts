@@ -13,6 +13,26 @@ export function formatCompact(value: number | null | undefined): string {
   return `${sign}${abs.toFixed(0)}`;
 }
 
+export type DisplayUnit = 'times' | 'percent' | 'days' | 'currency';
+
+export function formatUnitValue(
+  value: number | null | undefined,
+  unit: DisplayUnit | string,
+  digits = 2
+): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  switch (unit) {
+    case 'percent':
+      return `${value.toFixed(digits)}%`;
+    case 'days':
+      return `${value.toFixed(digits)} days`;
+    case 'currency':
+      return value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    default:
+      return `${value.toFixed(digits)}x`;
+  }
+}
+
 export function formatPercent(value: number | null | undefined, digits = 2): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—';
   return `${value.toFixed(digits)}%`;

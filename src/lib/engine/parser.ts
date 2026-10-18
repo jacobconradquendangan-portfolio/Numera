@@ -1362,7 +1362,7 @@ function finalizeStatement(
 function formatNumber(value: number): string {
   const rounded = roundValue(value);
   const sign = rounded < 0 ? '-' : '';
-  return sign + Math.abs(rounded).toLocaleString('en-US', { maximumFractionDigits: 6 });
+  return sign + Math.abs(rounded).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function validateBalanceSheet(statement: NormalizedStatement, options: ResolvedOptions): BalanceSheetValidation[] {
@@ -1404,7 +1404,7 @@ function validateBalanceSheet(statement: NormalizedStatement, options: ResolvedO
       `${formatNumber(equity ?? 0)} (Total Equity)`;
     const message = balanced
       ? `Balanced within tolerance (difference ${formatNumber(difference)}, tolerance ${formatNumber(tolerance)}).`
-      : `Out of balance by ${formatNumber(difference)} (relative ${(relativeDifference * 100).toFixed(3)}%), exceeding tolerance ${formatNumber(tolerance)}.`;
+      : `Out of balance by ${formatNumber(difference)} (relative ${(relativeDifference * 100).toFixed(2)}%), exceeding tolerance ${formatNumber(tolerance)}.`;
 
     return {
       period,

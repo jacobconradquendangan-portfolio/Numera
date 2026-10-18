@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { HorizontalAnalysis, VerticalAnalysis } from '@/lib/types';
-import { cx, formatCompact, formatSigned, formatSignedPercent, toneFor } from '@/lib/format';
+import { cx, formatCompact, formatPercent, formatSigned, formatSignedPercent, toneFor } from '@/lib/format';
 
 interface AnalysisTablesProps {
   title: string;
@@ -173,7 +173,7 @@ export default function AnalysisTables({
                             />
                           </span>
                           <span className="tabular w-16 text-right text-paper">
-                            {entry.percent === null ? '—' : `${entry.percent.toFixed(1)}%`}
+                            {formatPercent(entry.percent)}
                           </span>
                         </div>
                       </td>
