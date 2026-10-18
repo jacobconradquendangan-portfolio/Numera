@@ -7,7 +7,7 @@
 [![CI](https://github.com/jacobconradquendangan-portfolio/Numera/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jacobconradquendangan-portfolio/Numera/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-8f6110?style=flat-square)](LICENSE)
 ![Version](https://img.shields.io/badge/version-1.1.0-8f6110?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-105_passing-357a3d?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-112_passing-357a3d?style=flat-square)
 ![Next.js](https://img.shields.io/badge/Next.js-15-23211a?style=flat-square&logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-23211a?style=flat-square&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-23211a?style=flat-square&logo=typescript&logoColor=3178C6)
@@ -58,7 +58,8 @@ leaves your device.
 | **Multi-period ratios** | Every ratio is computed for every period, using true average balances once a prior period exists, so values, cards and charts follow the selected period. |
 | **Configurable day-count basis** | 365-day (default) or 360-day convention for receivables, inventory and defensive-interval days; every day-based solution shows the chosen basis. |
 | **Transparent solutions** | Each ratio exposes its formula, the substituted source values (data lineage) and the step-by-step result. |
-| **Downloadable summary report** | Export a text-based PDF summary — overview, vertical and horizontal analysis (income, balance and cash flow), and every ratio's audit trail — for the selected period or all periods. |
+| **Financial health summary** | A rule-based narrative that reads the computed ratios and reports strengths and areas to watch across liquidity, profitability, leverage, coverage, efficiency, cash flow, growth and valuation — shown on screen and included in the report. |
+| **Downloadable summary report** | Export a text-based PDF summary — financial health summary, overview, vertical and horizontal analysis (income, balance and cash flow), and every ratio's audit trail — for the selected period or all periods. |
 | **Visual analysis** | Trend, ratio-comparison, profitability-trend and common-size (vertical) charts. |
 | **Input validation** | Malformed numbers, duplicate periods, unbalanced statements and unreadable files are caught up front with minimisable alert banners. |
 
@@ -169,6 +170,7 @@ src/
       analyzer.ts          Vertical & horizontal analysis
       ratios.ts            CFI ratio computation engine
     chartData.ts           Client-safe chart data builders
+    insights.ts            Rule-based financial health narrative
     report.ts              Client-safe text summary report model
     validation.ts          Client-safe input validation
     types.ts               Shared client-safe types
@@ -189,8 +191,8 @@ npm run lint      # lint
 ```
 
 The suite covers the parser, manual and paste ingestion, balance-sheet validation, cash flow
-statements, the ratio engine (benchmarks and edge cases), the summary report model and full pipeline
-integration.
+statements, the ratio engine (benchmarks and edge cases), the financial health summary, the summary
+report model and full pipeline integration.
 
 ---
 

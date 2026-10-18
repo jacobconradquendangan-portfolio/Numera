@@ -1,6 +1,8 @@
 import type { AnalyzeSuccess, DayCountBasis, VerticalAnalysis, HorizontalAnalysis } from '@/lib/types';
 import type { DocumentFormat, StatementType } from '@/lib/engine/parser';
 import type { RatioAvailability, RatioCategory, RatioReport } from '@/lib/engine/ratios';
+import type { InsightReport } from '@/lib/insights';
+import { buildInsights } from '@/lib/insights';
 import { formatNumber, formatPercent, formatSignedPercent, formatUnitValue } from '@/lib/format';
 
 export type ReportScope = 'selected' | 'all';
@@ -84,6 +86,7 @@ export interface ReportModel {
   balanceHorizontal: ReportTable | null;
   cashflowHorizontal: ReportTable | null;
   ratioPeriods: ReportPeriodRatios[];
+  insights: InsightReport | null;
 }
 
 const FORMAT_LABELS: Record<DocumentFormat, string> = {
@@ -324,6 +327,8 @@ function buildRatioPeriods(result: AnalyzeSuccess, periods: string[]): ReportPer
 
 export function buildReport(result: AnalyzeSuccess, options: ReportOptions): ReportModel {
   const periods = scopedPeriods(result, options);
+  const focusPeriod = periods[periods.length - 1] ?? result.ratios.period;
+  const focusReport = reportForPeriod(result, focusPeriod) ?? result.ratios;
   return {
     meta: buildReportMeta(result, options),
     periods,
@@ -336,5 +341,6 @@ export function buildReport(result: AnalyzeSuccess, options: ReportOptions): Rep
     balanceHorizontal: buildHorizontalTable(result.analysis.horizontal.balance, periods),
     cashflowHorizontal: buildHorizontalTable(result.analysis.horizontal.cashflow, periods),
     ratioPeriods: buildRatioPeriods(result, periods),
+    insights: buildInsights({ report: focusReport, history: result.ratioHistory, analysis: result.analysis }),
   };
 }

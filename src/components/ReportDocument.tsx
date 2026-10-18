@@ -186,8 +186,49 @@ export default function ReportDocument({ result, scope, selectedPeriod, filename
         </div>
       </Section>
 
+      {report.insights && report.insights.insights.length ? (
+        <Section
+          index="02"
+          title="Financial health summary"
+          subtitle={`auto-generated · ${report.insights.period}`}
+        >
+          <p className="mb-3 text-[0.78rem] leading-relaxed text-paper">{report.insights.verdict}</p>
+          <div className="space-y-3">
+            {report.insights.insights.map((insight) => (
+              <div key={insight.id} className="rounded-lg border border-line px-4 py-3">
+                <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-display text-sm text-paper">{insight.title}</span>
+                  <span
+                    className={cx(
+                      'font-mono text-[0.55rem] uppercase tracking-[0.16em]',
+                      insight.tone === 'positive' && 'text-pos',
+                      insight.tone === 'watch' && 'text-neg',
+                      insight.tone === 'neutral' && 'text-faint'
+                    )}
+                  >
+                    {insight.tone === 'positive' ? 'Strengths' : insight.tone === 'watch' ? 'Watch' : 'Neutral'}
+                  </span>
+                </div>
+                <p className="text-[0.72rem] leading-relaxed text-muted">{insight.summary}</p>
+                {insight.points.length ? (
+                  <ul className="mt-2 space-y-1">
+                    {insight.points.map((entry, index) => (
+                      <li key={`${insight.id}-${index}`} className="text-[0.68rem] leading-snug">
+                        <span className="tabular text-paper">{entry.value}</span>
+                        <span className="ml-2 text-faint">{entry.label}</span>
+                        <span className="ml-2 text-faint/80">{entry.note}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
       {report.incomeVertical || report.balanceVertical || report.cashflowVertical ? (
-        <Section index="02" title="Vertical analysis" subtitle="percent of base">
+        <Section index="03" title="Vertical analysis" subtitle="percent of base">
           {report.incomeVertical ? (
             <div className="mb-4">
               <p className="rule-label mb-1.5">Income statement · percent of revenue</p>
@@ -210,7 +251,7 @@ export default function ReportDocument({ result, scope, selectedPeriod, filename
       ) : null}
 
       {report.incomeHorizontal || report.balanceHorizontal || report.cashflowHorizontal ? (
-        <Section index="03" title="Horizontal analysis" subtitle="period-over-period change">
+        <Section index="04" title="Horizontal analysis" subtitle="period-over-period change">
           {report.incomeHorizontal ? (
             <div className="mb-4">
               <p className="rule-label mb-1.5">Income statement</p>
@@ -233,7 +274,7 @@ export default function ReportDocument({ result, scope, selectedPeriod, filename
       ) : null}
 
       {report.ratioPeriods.length ? (
-        <Section index="04" title="CFI financial ratios" subtitle="full audit trail">
+        <Section index="05" title="CFI financial ratios" subtitle="full audit trail">
           {report.ratioPeriods.map((periodRatios) => (
             <div key={periodRatios.period} className="mb-6 break-before-page">
               <div className="mb-3 border-b border-line pb-1.5">

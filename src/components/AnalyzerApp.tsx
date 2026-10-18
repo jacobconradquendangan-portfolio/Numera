@@ -7,6 +7,7 @@ import ManualEntryPanel from './ManualEntryPanel';
 import type { ManualValidationState } from './ManualEntryPanel';
 import SupplementalPanel from './SupplementalPanel';
 import Overview from './Overview';
+import InsightsPanel from './InsightsPanel';
 import ChartsPanel from './ChartsPanel';
 import AnalysisTables from './AnalysisTables';
 import RatioAccordion from './RatioAccordion';
@@ -24,6 +25,7 @@ import type {
   SupplementalForm,
 } from '@/lib/types';
 import { cx } from '@/lib/format';
+import { buildInsights } from '@/lib/insights';
 import { SAMPLE_SUPPLEMENTAL } from '@/lib/sample';
 
 const EMPTY_SUPPLEMENTAL: SupplementalForm = {
@@ -181,6 +183,11 @@ export default function AnalyzerApp() {
     () => ratioReports.find((report) => report.period === selectedPeriod) ?? result?.ratios ?? null,
     [ratioReports, selectedPeriod, result]
   );
+
+  const insights = useMemo(() => {
+    if (!result || !selectedReport) return null;
+    return buildInsights({ report: selectedReport, history: ratioReports, analysis: result.analysis });
+  }, [result, selectedReport, ratioReports]);
 
   const resultIssues = useMemo<{ errors: BannerItem[]; warnings: BannerItem[] }>(() => {
     if (!result) return { errors: [], warnings: [] };
@@ -400,6 +407,8 @@ export default function AnalyzerApp() {
             selectedPeriod={selectedPeriod}
             unitMultiplier={result.ratios.unitMultiplier}
           />
+
+          <InsightsPanel insights={insights} />
 
           <ChartsPanel
             income={result.document.statements.income}
