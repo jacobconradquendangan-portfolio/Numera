@@ -3,12 +3,12 @@
 import type { RatioCategory, RatioReport, RatioResult } from '@/lib/types';
 import { cx, formatCompact, formatUnitValue } from '@/lib/format';
 
-const CATEGORY_META: Record<RatioCategory, { title: string; index: string; blurb: string }> = {
-  liquidity: { title: 'Liquidity', index: '01', blurb: 'Ability to meet short-term obligations' },
-  profitability: { title: 'Profitability', index: '02', blurb: 'Earnings generation against sales, assets & equity' },
-  leverage: { title: 'Leverage', index: '03', blurb: 'Capital structure and solvency risk' },
-  efficiency: { title: 'Efficiency', index: '04', blurb: 'How effectively assets are converted to sales' },
-  valuation: { title: 'Valuation', index: '05', blurb: 'Market pricing multiples' },
+const CATEGORY_META: Record<RatioCategory, { title: string; blurb: string }> = {
+  liquidity: { title: 'Liquidity', blurb: 'Ability to meet short-term obligations' },
+  profitability: { title: 'Profitability', blurb: 'Earnings generation against sales, assets & equity' },
+  leverage: { title: 'Leverage', blurb: 'Capital structure and solvency risk' },
+  efficiency: { title: 'Efficiency', blurb: 'How effectively assets are converted to sales' },
+  valuation: { title: 'Valuation', blurb: 'Market pricing multiples' },
 };
 
 const AVAILABILITY_TONE: Record<RatioResult['availability'], string> = {
@@ -27,11 +27,11 @@ function AvailabilityBadge({ availability }: { availability: RatioResult['availa
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.16em]',
+        'inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.16em]',
         AVAILABILITY_TONE[availability]
       )}
     >
-      <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+      <span className="inline-block h-1.5 w-1.5 bg-current" aria-hidden />
       {availability}
     </span>
   );
@@ -51,12 +51,12 @@ function StepList({ steps }: { steps: RatioResult['steps'] }) {
         return (
           <li key={`${step.label}-${index}`} className="flex gap-3">
             <div className="flex flex-col items-center">
-              <span
-                className={cx(
-                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border font-mono text-[0.62rem]',
-                  last ? 'border-accent bg-accent text-ink' : 'border-line2 bg-panel text-faint'
-                )}
-              >
+                <span
+                  className={cx(
+                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border font-mono text-[0.62rem]',
+                    last ? 'border-accent bg-accent text-ink' : 'border-line2 bg-panel text-faint'
+                  )}
+                >
                 {index + 1}
               </span>
               {!last ? <span className="mt-1 w-px flex-1 bg-line" aria-hidden /> : null}
@@ -132,7 +132,7 @@ function RatioCard({
                 <span
                   key={point.period}
                   className={cx(
-                    'tabular flex items-baseline gap-2 rounded-lg border px-3 py-1.5 text-xs',
+                    'tabular flex items-baseline gap-2 rounded-sm border px-2.5 py-1 text-xs',
                     point.period === selectedPeriod
                       ? 'border-accent bg-accent/10 text-accent'
                       : 'border-line2 text-muted'
@@ -207,7 +207,7 @@ function RatioCard({
                       key={index}
                       className="flex items-start gap-2 rounded-lg border border-accent/25 bg-accent/[0.05] px-3 py-2 text-xs leading-relaxed text-accent"
                     >
-                      <span className="mt-1.5 inline-block h-1 w-1 shrink-0 rounded-full bg-accent" aria-hidden />
+                      <span className="mt-1.5 inline-block h-1 w-1 shrink-0 bg-accent" aria-hidden />
                       <span>{note}</span>
                     </p>
                   ))}
@@ -242,16 +242,13 @@ export default function RatioAccordion({ reports, selectedPeriod }: { reports: R
         const computed = ratios.filter((ratio) => ratio.availability !== 'unavailable').length;
         return (
           <section key={category} className="rise space-y-4">
-            <div className="flex items-end justify-between gap-4 border-b border-line pb-3">
-              <div className="flex items-baseline gap-4">
-                <span className="font-display text-3xl text-accentdim">{meta.index}</span>
-                <div>
-                  <h3 className="font-display text-2xl text-paper">{meta.title}</h3>
-                  <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-faint">{meta.blurb}</p>
-                </div>
+            <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-3">
+              <div>
+                <h3 className="font-display text-2xl text-paper">{meta.title}</h3>
+                <p className="rule-label mt-0.5">{meta.blurb}</p>
               </div>
-              <span className="tabular hidden rounded-full border border-line2 px-3 py-1 text-[0.68rem] text-muted sm:block">
-                {computed}/{ratios.length} resolved · {selected.period}
+              <span className="tabular rounded-sm border border-line2 px-2.5 py-1 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted">
+                {computed}/{ratios.length} resolved
               </span>
             </div>
             <div className="space-y-3">

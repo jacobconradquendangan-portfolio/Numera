@@ -517,10 +517,17 @@ export default function AnalyzerApp() {
 
           <section id="analysis-ratios" className="scroll-mt-32 space-y-8">
             <header className="border-b border-line pb-3">
-              <h2 className="font-display text-3xl text-paper">CFI Financial Ratios</h2>
-              <p className="rule-label mt-1">
-                Values follow the selected period · toggle any card for its formula, substituted values and solution audit trail
-              </p>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h2 className="font-display text-3xl text-paper">CFI Financial Ratios</h2>
+                  <p className="rule-label mt-1">
+                    Every figure opens into its formula, substituted values and solution audit trail
+                  </p>
+                </div>
+                <span className="rounded-sm border border-line2 px-2.5 py-1 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-paper">
+                  Period {selectedPeriod || selectedReport?.period}
+                </span>
+              </div>
             </header>
             <RatioAccordion reports={ratioReports} selectedPeriod={selectedPeriod} />
           </section>
