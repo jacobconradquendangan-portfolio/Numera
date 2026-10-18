@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AlertBanner from './AlertBanner';
 import { cx } from '@/lib/format';
 import { hasBlockingErrors, validatePastedText } from '@/lib/validation';
@@ -10,10 +10,16 @@ interface PasteTextPanelProps {
   onAnalyze: (text: string) => void;
   busy: boolean;
   onLoadSample?: () => void;
+  clearSignal?: number;
 }
 
-export default function PasteTextPanel({ onAnalyze, busy, onLoadSample }: PasteTextPanelProps) {
+export default function PasteTextPanel({ onAnalyze, busy, onLoadSample, clearSignal }: PasteTextPanelProps) {
   const [text, setText] = useState('');
+
+  useEffect(() => {
+    if (!clearSignal) return;
+    setText('');
+  }, [clearSignal]);
 
   const issues = useMemo(() => (text.trim() ? validatePastedText(text) : []), [text]);
   const blocked = hasBlockingErrors(issues);

@@ -23,6 +23,7 @@ interface ManualEntryPanelProps {
   busy: boolean;
   onValidationChange?: (validation: ManualValidationState) => void;
   seed?: ManualSeed | null;
+  clearSignal?: number;
 }
 
 interface Row {
@@ -44,7 +45,13 @@ function emptyRow(cols: number): Row {
 const CELL =
   'tabular w-full rounded-lg border border-line bg-ink/50 px-3 py-2 text-sm text-paper outline-none transition focus:border-accentdim focus:ring-2 focus:ring-accent/15';
 
-export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange, seed }: ManualEntryPanelProps) {
+export default function ManualEntryPanel({
+  onAnalyze,
+  busy,
+  onValidationChange,
+  seed,
+  clearSignal,
+}: ManualEntryPanelProps) {
   const [periods, setPeriods] = useState<string[]>(['2025', '2024']);
   const [incomeRows, setIncomeRows] = useState<Row[]>(() => [emptyRow(2), emptyRow(2), emptyRow(2)]);
   const [balanceRows, setBalanceRows] = useState<Row[]>(() => [emptyRow(2), emptyRow(2), emptyRow(2)]);
@@ -128,6 +135,20 @@ export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange, 
       type === 'income' ? setIncomeRows : type === 'balance' ? setBalanceRows : setCashflowRows,
     []
   );
+
+  const resetAll = useCallback(() => {
+    seededFrom.current = null;
+    setSeedSource(null);
+    setPeriods(['2025', '2024']);
+    setIncomeRows([emptyRow(2), emptyRow(2), emptyRow(2)]);
+    setBalanceRows([emptyRow(2), emptyRow(2), emptyRow(2)]);
+    setCashflowRows([emptyRow(2), emptyRow(2)]);
+  }, []);
+
+  useEffect(() => {
+    if (!clearSignal) return;
+    resetAll();
+  }, [clearSignal, resetAll]);
 
   const updateLabel = useCallback(
     (type: StatementType, id: string, value: string) => {

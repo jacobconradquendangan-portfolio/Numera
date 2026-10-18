@@ -71,6 +71,7 @@ export default function AnalyzerApp() {
   const lastInputRef = useRef<LastInput | null>(null);
   const seedCounterRef = useRef(0);
   const [manualSeed, setManualSeed] = useState<ManualSeed | null>(null);
+  const [clearTick, setClearTick] = useState(0);
   const [printScope, setPrintScope] = useState<ReportScope | null>(null);
 
   useEffect(() => {
@@ -171,6 +172,19 @@ export default function AnalyzerApp() {
     else body.append('manual', JSON.stringify(last.statements));
     void submit(body);
   }, [submit]);
+
+  const handleClearAll = useCallback(() => {
+    lastInputRef.current = null;
+    seedCounterRef.current = 0;
+    setManualSeed(null);
+    setResult(null);
+    setError(null);
+    setSelectedPeriod('');
+    setFilename(undefined);
+    setSupplemental(EMPTY_SUPPLEMENTAL);
+    setDayCountBasis(365);
+    setClearTick((tick) => tick + 1);
+  }, []);
 
   const handleSupplementalChange = useCallback((key: keyof SupplementalForm, value: string) => {
     setSupplemental((previous) => ({ ...previous, [key]: value }));
@@ -301,6 +315,19 @@ export default function AnalyzerApp() {
               ) : null}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={handleClearAll}
+            disabled={!result && !error && !manualValidation.hasLines}
+            className={cx(
+              'ml-auto rounded-full border px-3.5 py-1.5 font-mono text-[0.62rem] uppercase tracking-[0.18em] transition',
+              result || error || manualValidation.hasLines
+                ? 'border-line2 text-muted hover:border-neg/60 hover:text-neg'
+                : 'cursor-not-allowed border-line text-faint'
+            )}
+          >
+            Clear
+          </button>
         </div>
 
         {mode === 'manual' && manualValidation.hasLines && manualValidation.issues.length ? (
@@ -346,11 +373,10 @@ export default function AnalyzerApp() {
             onAnalyze={handleText}
             busy={loading}
             onLoadSample={() => setSupplemental({ ...SAMPLE_SUPPLEMENTAL })}
+            clearSignal={clearTick}
           />
         ) : null}
-        {mode === 'manual' ? (
-          <ManualEntryPanel onAnalyze={handleManual} busy={loading} onValidationChange={handleManualValidation} seed={manualSeed} />
-        ) : null}
+        {mode === 'manual' ? <ManualEntryPanel onAnalyze={handleManual} busy={loading} onValidationChange={handleManualValidation} seed={manualSeed} clearSignal={clearTick} /> : null}
 
         <SupplementalPanel
           values={supplemental}
