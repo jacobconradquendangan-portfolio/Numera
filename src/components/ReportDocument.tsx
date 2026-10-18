@@ -224,6 +224,21 @@ export default function ReportDocument({ result, scope, selectedPeriod, filename
               </div>
             ))}
           </div>
+          {report.insights.references.length ? (
+            <div className="mt-4 break-before-page">
+              <p className="rule-label mb-1.5">Rules of thumb cited from</p>
+              <ul className="space-y-0.5">
+                {report.insights.references.map((reference) => (
+                  <li key={reference.url} className="text-[0.68rem] leading-snug">
+                    <a href={reference.url} target="_blank" rel="noopener noreferrer" className="text-accent">
+                      {reference.label}
+                    </a>
+                    <span className="ml-1.5 font-mono text-[0.6rem] text-faint">{reference.url}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </Section>
       ) : null}
 

@@ -17,6 +17,11 @@ export interface Insight {
   points: InsightPoint[];
 }
 
+export interface InsightReference {
+  label: string;
+  url: string;
+}
+
 export interface InsightReport {
   period: string;
   tone: InsightTone;
@@ -24,6 +29,7 @@ export interface InsightReport {
   strengths: number;
   watches: number;
   insights: Insight[];
+  references: InsightReference[];
 }
 
 interface BuildInput {
@@ -36,6 +42,7 @@ const RULES = {
   currentRatioComfort: 2,
   quickRatioComfort: 1,
   netMarginStrong: 10,
+  netMarginHigh: 20,
   netMarginLow: 5,
   roeStrong: 15,
   debtToEquityHigh: 2,
@@ -45,12 +52,23 @@ const RULES = {
   tieComfort: 3,
   tieThin: 2,
   ocfRatioComfort: 1,
-  ocfRatioThin: 0.5,
   arDaysStretched: 60,
   growthFlat: 0.5,
 };
 
 const INDUSTRY_CAVEAT = 'reference levels are directional and vary by industry.';
+
+const CFI_BASE = 'https://corporatefinanceinstitute.com/resources';
+
+const REFERENCES: InsightReference[] = [
+  { label: 'CFI — Current Ratio Formula (2:1 rule of thumb)', url: `${CFI_BASE}/accounting/current-ratio-formula` },
+  { label: 'CFI — Quick Ratio / Acid Test (1:1 guideline)', url: `${CFI_BASE}/accounting/quick-ratio-definition/` },
+  { label: 'CFI — Profit Margin (5% low · 10% average · 20% high)', url: `${CFI_BASE}/accounting/profit-margin/` },
+  { label: 'CFI — Interest Coverage Ratio (2× minimum, 3× preferred)', url: `${CFI_BASE}/commercial-lending/interest-coverage-ratio` },
+  { label: 'CFI — Equity Ratio (0.50 or above considered good)', url: `${CFI_BASE}/valuation/equity-ratio` },
+  { label: 'CFI — Operating Cash Flow Ratio (1.0× guideline)', url: `${CFI_BASE}/financial-modeling/operating-cash-flow-ratio-template` },
+  { label: 'CFI — Debt-to-Equity Ratio (levels vary by industry)', url: `${CFI_BASE}/commercial-lending/debt-to-equity-ratio-formula` },
+];
 
 function indexById(report: RatioReport): Map<string, RatioResult> {
   return new Map(report.ratios.map((ratio) => [ratio.id, ratio]));
@@ -150,7 +168,7 @@ function profitabilityInsight(byId: Map<string, RatioResult>, prior: RatioReport
     summary = `Thin net margin, below the ${RULES.netMarginLow}% level often used as a low-margin marker; margins vary widely by industry.`;
   } else if (net !== null && net >= RULES.netMarginStrong) {
     tone = 'positive';
-    summary = `Strong profitability: net margin above the ${RULES.netMarginStrong}% level commonly cited as healthy (net margins are industry-specific).`;
+    summary = `Strong profitability: net margin is at or above the ${RULES.netMarginStrong}% level commonly cited as average (5% is generally seen as low and ${RULES.netMarginHigh}% as high; margins vary by industry).`;
   }
   if (roe !== null && roe >= RULES.roeStrong && tone === 'neutral') {
     tone = 'positive';
@@ -182,11 +200,11 @@ function leverageInsight(byId: Map<string, RatioResult>, prior: RatioReport | nu
     tone = 'watch';
     summary = 'Leverage increased versus the prior period; rising debt raises sensitivity to interest rates and earnings swings.';
   } else if (
-    (de !== null && de <= 1) ||
-    (equityRatio !== null && equityRatio >= RULES.equityRatioComfort)
+    (equityRatio !== null && equityRatio >= RULES.equityRatioComfort) ||
+    (de !== null && de <= 1)
   ) {
     tone = 'positive';
-    summary = 'Conservative capital structure: equity covers at least half of assets and debt does not exceed equity.';
+    summary = `Conservative capital structure: equity finances at least ${RULES.equityRatioComfort}% of assets, the level commonly cited as a good equity ratio, and debt does not exceed equity.`;
   }
   return { id: 'leverage', title: 'Leverage & solvency', tone, summary, points };
 }
@@ -255,13 +273,13 @@ function cashFlowInsight(byId: Map<string, RatioResult>): Insight | null {
     ),
   ].filter((entry): entry is InsightPoint => entry !== null);
   let tone: InsightTone = 'neutral';
-  let summary = 'Cash generation covers interest and reinvestment with a modest buffer.';
+  let summary = 'Cash generation covers current obligations, with reinvestment funded internally.';
   if (ocfRatio !== null && ocfRatio >= RULES.ocfRatioComfort) {
     tone = 'positive';
     summary = 'Operating cash flow covers current liabilities at or above the 1.0× level generally regarded as adequate.';
-  } else if (ocfRatio !== null && ocfRatio < RULES.ocfRatioThin) {
+  } else if (ocfRatio !== null && ocfRatio < RULES.ocfRatioComfort) {
     tone = 'watch';
-    summary = `Operating cash flow is weak relative to current liabilities (below ${RULES.ocfRatioThin}×).`;
+    summary = 'Operating cash flow fell short of current liabilities (below the 1.0× guideline), signalling short-term funding strain.';
   }
   return { id: 'cash-flow', title: 'Cash flow', tone, summary, points };
 }
@@ -379,5 +397,5 @@ export function buildInsights({ report, history = [], analysis }: BuildInput): I
     verdict = `Mixed picture — ${strengths} strength${strengths === 1 ? '' : 's'} tempered by ${watches} area${watches === 1 ? '' : 's'} to watch.`;
   }
 
-  return { period: report.period, tone, verdict, strengths, watches, insights };
+  return { period: report.period, tone, verdict, strengths, watches, insights, references: REFERENCES };
 }

@@ -92,6 +92,26 @@ export default function InsightsPanel({ insights }: InsightsPanelProps) {
           <InsightBlock key={insight.id} insight={insight} />
         ))}
       </div>
+
+      {insights.references.length ? (
+        <footer className="rounded-2xl border border-line bg-panel px-6 py-4">
+          <p className="rule-label mb-2">Rules of thumb cited from</p>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1">
+            {insights.references.map((reference) => (
+              <li key={reference.url}>
+                <a
+                  href={reference.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-accent underline decoration-line2 underline-offset-4 hover:text-paper"
+                >
+                  {reference.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </footer>
+      ) : null}
     </section>
   );
 }

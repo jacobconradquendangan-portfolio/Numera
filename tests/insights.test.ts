@@ -43,6 +43,15 @@ describe('financial health summary', () => {
     expect(coverage.summary).toContain('1.0×');
   });
 
+  it('lists verifiable external references', () => {
+    expect(report.references.length).toBeGreaterThan(3);
+    expect(new Set(report.references.map((reference) => reference.url)).size).toBe(report.references.length);
+    for (const reference of report.references) {
+      expect(reference.label).toContain('CFI');
+      expect(reference.url).toMatch(/^https:\/\/corporatefinanceinstitute\.com\/resources\//);
+    }
+  });
+
   it('reports growth using period-over-period changes', () => {
     const growth = report.insights.find((insight) => insight.id === 'growth')!;
     const revenue = growth.points.find((point) => point.label === 'Revenue growth')!;
