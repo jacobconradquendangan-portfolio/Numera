@@ -155,7 +155,7 @@ export default function ReportDocument({ result, scope, selectedPeriod, filename
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <p className="font-display text-2xl text-paper">Numera</p>
-            <p className="rule-label mt-1">Financial Statement Analyzer · Audited summary report</p>
+            <p className="rule-label mt-1">Financial Statement Analyzer · Financial Analysis Summary Report</p>
           </div>
           <p className="tabular text-xs text-faint">Generated {report.meta.generatedAt}</p>
         </div>
