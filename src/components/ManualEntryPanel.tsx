@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CategoryCombobox from './CategoryCombobox';
 import { cx } from '@/lib/format';
 import { hasBlockingErrors, isMalformedNumber, validateManualStatements } from '@/lib/validation';
 import type { ValidationIssue } from '@/lib/validation';
-import type { CategoryOption, ManualStatementPayload, StatementType } from '@/lib/types';
+import type { CategoryOption, ManualStatementPayload, NormalizedStatement, StatementType } from '@/lib/types';
 
 export interface ManualValidationState {
   blocked: boolean;
@@ -13,10 +13,16 @@ export interface ManualValidationState {
   issues: ValidationIssue[];
 }
 
+export interface ManualSeed {
+  source: string;
+  statements: NormalizedStatement[];
+}
+
 interface ManualEntryPanelProps {
   onAnalyze: (statements: ManualStatementPayload[]) => void;
   busy: boolean;
   onValidationChange?: (validation: ManualValidationState) => void;
+  seed?: ManualSeed | null;
 }
 
 interface Row {
@@ -38,12 +44,49 @@ function emptyRow(cols: number): Row {
 const CELL =
   'tabular w-full rounded-lg border border-line bg-ink/50 px-3 py-2 text-sm text-paper outline-none transition focus:border-accentdim focus:ring-2 focus:ring-accent/15';
 
-export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange }: ManualEntryPanelProps) {
+export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange, seed }: ManualEntryPanelProps) {
   const [periods, setPeriods] = useState<string[]>(['2025', '2024']);
   const [incomeRows, setIncomeRows] = useState<Row[]>(() => [emptyRow(2), emptyRow(2), emptyRow(2)]);
   const [balanceRows, setBalanceRows] = useState<Row[]>(() => [emptyRow(2), emptyRow(2), emptyRow(2)]);
   const [cashflowRows, setCashflowRows] = useState<Row[]>(() => [emptyRow(2), emptyRow(2)]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [seedSource, setSeedSource] = useState<string | null>(null);
+  const seededFrom = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!seed || seededFrom.current === seed.source) return;
+    seededFrom.current = seed.source;
+    setSeedSource(seed.source);
+    const periodSet: string[] = [];
+    for (const statement of seed.statements) {
+      for (const period of statement.periods) {
+        if (!periodSet.includes(period)) periodSet.push(period);
+      }
+    }
+    if (!periodSet.length) return;
+    const take = (type: StatementType) => {
+      const statement = seed.statements.find((entry) => entry.type === type);
+      if (!statement) return null;
+      const rows = statement.lineItems
+        .map((item) => ({
+          id: nextId(),
+          label: item.rawLabel,
+          values: periodSet.map((period) => {
+            const value = item.values[period];
+            return value === null || value === undefined ? '' : String(value);
+          }),
+        }))
+        .filter((row) => row.values.some((value) => value !== ''));
+      return rows.length ? rows : null;
+    };
+    const income = take('income');
+    const balance = take('balance');
+    const cashflow = take('cashflow');
+    setPeriods(periodSet);
+    if (income) setIncomeRows(income);
+    if (balance) setBalanceRows(balance);
+    if (cashflow) setCashflowRows(cashflow);
+  }, [seed]);
 
   useEffect(() => {
     let alive = true;
@@ -303,7 +346,11 @@ export default function ManualEntryPanel({ onAnalyze, busy, onValidationChange }
           </span>
           <span>
             <span className="block font-display text-lg text-paper">Manual entry</span>
-            <span className="rule-label">Type the figures yourself — periods are editable column headers</span>
+            <span className="rule-label">
+              {seedSource
+                ? 'Preloaded from your latest paste or upload — edit any figure and run again'
+                : 'Type the figures yourself — periods are editable column headers'}
+            </span>
           </span>
         </span>
         <span className="rule-label">

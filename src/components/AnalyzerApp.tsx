@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import UploadZone from './UploadZone';
 import PasteTextPanel from './PasteTextPanel';
 import ManualEntryPanel from './ManualEntryPanel';
-import type { ManualValidationState } from './ManualEntryPanel';
+import type { ManualValidationState, ManualSeed } from './ManualEntryPanel';
 import SupplementalPanel from './SupplementalPanel';
 import Overview from './Overview';
 import InsightsPanel from './InsightsPanel';
@@ -22,6 +22,7 @@ import type {
   AnalyzeSuccess,
   DayCountBasis,
   ManualStatementPayload,
+  NormalizedStatement,
   SupplementalForm,
 } from '@/lib/types';
 import { cx } from '@/lib/format';
@@ -68,6 +69,8 @@ export default function AnalyzerApp() {
     issues: [],
   });
   const lastInputRef = useRef<LastInput | null>(null);
+  const seedCounterRef = useRef(0);
+  const [manualSeed, setManualSeed] = useState<ManualSeed | null>(null);
   const [printScope, setPrintScope] = useState<ReportScope | null>(null);
 
   useEffect(() => {
@@ -104,6 +107,17 @@ export default function AnalyzerApp() {
         } else {
           setResult(payload);
           setSelectedPeriod(payload.ratios.period);
+          if (lastInputRef.current?.kind !== 'manual') {
+            const statements = [
+              payload.document.statements.income,
+              payload.document.statements.balance,
+              payload.document.statements.cashflow,
+            ].filter((statement): statement is NormalizedStatement => statement !== null);
+            if (statements.length && lastInputRef.current) {
+              seedCounterRef.current += 1;
+              setManualSeed({ source: `seed-${seedCounterRef.current}`, statements });
+            }
+          }
         }
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : 'Unexpected error contacting the analysis service.');
@@ -335,7 +349,7 @@ export default function AnalyzerApp() {
           />
         ) : null}
         {mode === 'manual' ? (
-          <ManualEntryPanel onAnalyze={handleManual} busy={loading} onValidationChange={handleManualValidation} />
+          <ManualEntryPanel onAnalyze={handleManual} busy={loading} onValidationChange={handleManualValidation} seed={manualSeed} />
         ) : null}
 
         <SupplementalPanel
