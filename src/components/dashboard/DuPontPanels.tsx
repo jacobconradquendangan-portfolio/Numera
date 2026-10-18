@@ -52,16 +52,6 @@ export default function DuPontPanels({ data, selectedPeriod }: DuPontPanelsProps
   }
 
   const focused = data.find((row) => row.period === selectedPeriod) ?? data[data.length - 1];
-  const substitution = [
-    display(focused.netMargin, 'percent'),
-    display(focused.assetTurnover, 'times'),
-    display(focused.financialLeverage, 'times'),
-  ].join(' × ');
-  const product =
-    focused.netMargin === null || focused.assetTurnover === null || focused.financialLeverage === null
-      ? null
-      : (focused.netMargin / 100) * focused.assetTurnover * focused.financialLeverage * 100;
-  const productGap = product === null || focused.roe === null ? null : Math.abs(product - focused.roe);
 
   return (
     <div className="space-y-6">
@@ -109,16 +99,6 @@ export default function DuPontPanels({ data, selectedPeriod }: DuPontPanelsProps
             <p className="mt-2.5 text-xs text-faint">Shareholder return · {focused.period}</p>
           </div>
         </div>
-
-        <p className="tabular mt-4 border-t border-line/70 pt-3 text-xs text-muted">
-          Substitution — {substitution} = {display(product, 'percent')}
-          {productGap === null
-            ? ' · incomplete inputs shown as dashes'
-            : productGap <= 0.05
-              ? ` · matches the reported ROE of ${display(focused.roe, 'percent')}`
-              : ` · reported ROE is ${display(focused.roe, 'percent')}`}
-        </p>
-        <p className="rule-label mt-1.5 text-faint">financial leverage = total assets / shareholders&rsquo; equity, the equity multiplier</p>
       </div>
 
       {data.length > 1 ? (
