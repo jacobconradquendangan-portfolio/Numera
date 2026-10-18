@@ -97,7 +97,7 @@ export default function FundingLedger({ data, selectedPeriod, equityRatio, debtT
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1">
         <span className="flex items-center gap-2">
           <span className="inline-block h-2.5 w-2.5" style={{ background: CREDITORS_COLOR }} />
-          <span className="rule-label">Creditors</span>
+          <span className="rule-label">Liabilities</span>
         </span>
         <span className="flex items-center gap-2">
           <span className="inline-block h-2.5 w-2.5" style={{ background: OWNERS_COLOR }} />
