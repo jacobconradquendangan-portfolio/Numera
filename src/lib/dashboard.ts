@@ -9,7 +9,10 @@ export const PANEL_META: Record<PanelId, { title: string; deck: string }> = {
   trends: { title: 'Ratio trends', deck: 'Chosen ratios charted across every period, never just the focus one' },
   cashflow: { title: 'Cash flow', deck: 'Operating, investing and financing flows across every period' },
   dupont: { title: 'DuPont decomposition', deck: 'Return on equity broken into margin, turnover and leverage' },
-  capital: { title: 'Capital structure & cycle', deck: 'Debt versus equity financing and the working-capital clock' },
+  capital: {
+    title: 'Capital structure & cycle',
+    deck: 'Who funds the assets, and how long cash is tied up before it returns',
+  },
   heat: { title: 'Ratio heat table', deck: 'Every chosen ratio across periods, tinted by the change since the prior one' },
 };
 

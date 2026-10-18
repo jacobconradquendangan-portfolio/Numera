@@ -235,6 +235,12 @@ describe('buildCapitalStructureData', () => {
     expect(row2025.Equity).toBe(60000);
   });
 
+  it('carries total assets so the funding ledger can scale its bars', () => {
+    const data = buildCapitalStructureData(dashboardDocument.statements.balance);
+    const row2025 = data.find((row) => row.period === '2025')!;
+    expect(row2025.Assets).toBe(100000);
+  });
+
   it('returns an empty array without a balance sheet', () => {
     expect(buildCapitalStructureData(null)).toEqual([]);
   });
@@ -248,6 +254,22 @@ describe('buildWorkingCapitalData', () => {
     expect(row2025.arDays).toBeCloseTo(ratioValue(report, 'ar-days'), 6);
     expect(row2025.inventoryDays).toBeCloseTo(ratioValue(report, 'inventory-days'), 6);
     expect(row2025.dirDays).toBeCloseTo(ratioValue(report, 'defensive-interval-ratio'), 6);
+  });
+
+  it('adds receivable days to inventory days for the operating cycle', () => {
+    const data = buildWorkingCapitalData(dashboardReports);
+    const row2025 = data.find((row) => row.period === '2025')!;
+    expect(row2025.operatingCycle).toBeCloseTo(row2025.arDays! + row2025.inventoryDays!, 6);
+  });
+
+  it('leaves the operating cycle empty when either day count is unavailable', () => {
+    const sparse = buildWorkingCapitalData([
+      {
+        ...dashboardReports[0],
+        ratios: dashboardReports[0].ratios.filter((ratio) => ratio.id !== 'inventory-days'),
+      },
+    ]);
+    expect(sparse[0].operatingCycle).toBeNull();
   });
 });
 

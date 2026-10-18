@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import RatioTrendChart from './charts/RatioTrendChart';
 import DuPontPanels from './dashboard/DuPontPanels';
-import CapitalStructureChart from './dashboard/CapitalStructureChart';
+import FundingLedger from './dashboard/FundingLedger';
+import OperatingCyclePanel from './dashboard/OperatingCyclePanel';
 import CashFlowChart from './dashboard/CashFlowChart';
-import WorkingCapitalStrip from './dashboard/WorkingCapitalStrip';
 import RatioHeatTable from './dashboard/RatioHeatTable';
 import {
   buildCapitalStructureData,
@@ -215,6 +215,8 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
 
   const reset = () => setState(defaultDashboardState());
 
+  const ratioById = (id: string) => selectedReport.ratios.find((ratio) => ratio.id === id) ?? null;
+
   const trendPicker = (
     <RatioPicker
       label="Series"
@@ -357,9 +359,22 @@ export default function DashboardTab({ result, selectedPeriod }: DashboardTabPro
 
         {state.panels.capital ? (
           <PanelShell metaId="capital" span="xl:col-span-2">
-            <div className="grid gap-8 xl:grid-cols-2">
-              <CapitalStructureChart data={capitalData} />
-              <WorkingCapitalStrip data={workingData} selectedPeriod={selectedReport.period} />
+            <div>
+              <p className="rule-label mb-2">Who funds the assets</p>
+              <FundingLedger
+                data={capitalData}
+                selectedPeriod={selectedReport.period}
+                equityRatio={ratioById('equity-ratio')}
+                debtToEquity={ratioById('debt-to-equity')}
+              />
+            </div>
+            <div className="mt-6 border-t border-line pt-5">
+              <p className="rule-label mb-2">How long cash is tied up</p>
+              <OperatingCyclePanel
+                data={workingData}
+                selectedPeriod={selectedReport.period}
+                defensiveInterval={ratioById('defensive-interval-ratio')}
+              />
             </div>
           </PanelShell>
         ) : null}

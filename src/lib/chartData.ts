@@ -278,6 +278,7 @@ export interface CapitalStructurePoint {
   period: string;
   Liabilities: number | null;
   Equity: number | null;
+  Assets: number | null;
 }
 
 export function buildCapitalStructureData(balance: NormalizedStatement | null): CapitalStructurePoint[] {
@@ -286,6 +287,7 @@ export function buildCapitalStructureData(balance: NormalizedStatement | null): 
     period,
     Liabilities: periodValue(balance, 'total_liabilities', period),
     Equity: periodValue(balance, 'total_equity', period),
+    Assets: periodValue(balance, 'total_assets', period),
   }));
 }
 
@@ -316,6 +318,7 @@ export interface WorkingCapitalPoint {
   period: string;
   arDays: number | null;
   inventoryDays: number | null;
+  operatingCycle: number | null;
   dirDays: number | null;
 }
 export function buildWorkingCapitalData(reports: RatioReport[]): WorkingCapitalPoint[] {
@@ -323,10 +326,13 @@ export function buildWorkingCapitalData(reports: RatioReport[]): WorkingCapitalP
     .sort((a, b) => periodSortKey(a.period) - periodSortKey(b.period) || a.period.localeCompare(b.period))
     .map((report) => {
       const byId = new Map(report.ratios.map((ratio) => [ratio.id, ratio]));
+      const arDays = byId.get('ar-days')?.value ?? null;
+      const inventoryDays = byId.get('inventory-days')?.value ?? null;
       return {
         period: report.period,
-        arDays: byId.get('ar-days')?.value ?? null,
-        inventoryDays: byId.get('inventory-days')?.value ?? null,
+        arDays,
+        inventoryDays,
+        operatingCycle: arDays === null || inventoryDays === null ? null : arDays + inventoryDays,
         dirDays: byId.get('defensive-interval-ratio')?.value ?? null,
       };
     });
