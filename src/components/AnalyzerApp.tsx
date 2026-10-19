@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import UploadZone from './UploadZone';
 import PasteTextPanel from './PasteTextPanel';
 import ManualEntryPanel from './ManualEntryPanel';
-import type { ManualValidationState, ManualSeed } from './ManualEntryPanel';
+import type { ManualValidationState } from './ManualEntryPanel';
+import VerifyView from './VerifyView';
 import SupplementalPanel from './SupplementalPanel';
 import DashboardTab from './DashboardTab';
 import Overview from './Overview';
@@ -25,10 +26,12 @@ import type {
   ManualStatementPayload,
   NetIncomeBasis,
   NormalizedStatement,
+  ParsedDocument,
   SupplementalForm,
 } from '@/lib/types';
 import { cx } from '@/lib/format';
 import { buildInsights } from '@/lib/insights';
+import { useManualModel } from '@/lib/manualModel';
 import { SAMPLE_SUPPLEMENTAL } from '@/lib/sample';
 
 const EMPTY_SUPPLEMENTAL: SupplementalForm = {
@@ -75,11 +78,52 @@ export default function AnalyzerApp() {
     issues: [],
   });
   const lastInputRef = useRef<LastInput | null>(null);
-  const seedCounterRef = useRef(0);
-  const [manualSeed, setManualSeed] = useState<ManualSeed | null>(null);
+  const manualModel = useManualModel();
+  const [parsedBaseline, setParsedBaseline] = useState<ParsedDocument | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
   const [clearTick, setClearTick] = useState(0);
-  const [activeView, setActiveView] = useState<'analysis' | 'dashboard'>('analysis');
+  const [activeView, setActiveView] = useState<'analysis' | 'dashboard' | 'verify'>('analysis');
   const [printScope, setPrintScope] = useState<ReportScope | null>(null);
+
+  const releasePdf = useCallback(() => {
+    if (pdfUrlRef.current) {
+      URL.revokeObjectURL(pdfUrlRef.current);
+      pdfUrlRef.current = null;
+    }
+    setPdfUrl(null);
+  }, []);
+
+  const loadPdf = useCallback(
+    (file: File) => {
+      releasePdf();
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+      if (!isPdf) return;
+      const url = URL.createObjectURL(file);
+      pdfUrlRef.current = url;
+      setPdfUrl(url);
+    },
+    [releasePdf]
+  );
+
+  const loadPdfBase64 = useCallback(
+    (base64: string) => {
+      try {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+        releasePdf();
+        const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+        pdfUrlRef.current = url;
+        setPdfUrl(url);
+      } catch {
+        /* keep whatever source is already loaded */
+      }
+    },
+    [releasePdf]
+  );
+
+  useEffect(() => () => releasePdf(), [releasePdf]);
 
   useEffect(() => {
     if (!printScope) return;
@@ -124,16 +168,17 @@ export default function AnalyzerApp() {
         } else {
           setResult(payload);
           setSelectedPeriod(payload.ratios.period);
-          if (lastInputRef.current?.kind !== 'manual') {
+          const parsedInput = lastInputRef.current?.kind === 'file' || lastInputRef.current?.kind === 'text';
+          if (parsedInput) {
+            setParsedBaseline(payload.document);
+            const searchable = payload.document.searchablePdf;
+            if (searchable) loadPdfBase64(searchable.base64);
             const statements = [
               payload.document.statements.income,
               payload.document.statements.balance,
               payload.document.statements.cashflow,
             ].filter((statement): statement is NormalizedStatement => statement !== null);
-            if (statements.length && lastInputRef.current) {
-              seedCounterRef.current += 1;
-              setManualSeed({ source: `seed-${seedCounterRef.current}`, statements });
-            }
+            if (statements.length) manualModel.applySeed(statements);
           }
         }
       } catch (caught) {
@@ -143,18 +188,19 @@ export default function AnalyzerApp() {
         setLoading(false);
       }
     },
-    [supplemental, dayCountBasis, netIncomeBasis]
+    [supplemental, dayCountBasis, netIncomeBasis, manualModel, loadPdfBase64]
   );
 
   const handleFile = useCallback(
     (file: File) => {
       lastInputRef.current = { kind: 'file', file };
       setFilename(file.name);
+      loadPdf(file);
       const body = new FormData();
       body.append('file', file);
       void submit(body);
     },
-    [submit]
+    [submit, loadPdf]
   );
 
   const handleText = useCallback(
@@ -189,10 +235,20 @@ export default function AnalyzerApp() {
     void submit(body);
   }, [submit]);
 
+  const handleVerifyRecompute = useCallback(() => {
+    const statements = manualModel.toStatements();
+    if (!statements.length) return;
+    lastInputRef.current = { kind: 'manual', statements };
+    const body = new FormData();
+    body.append('manual', JSON.stringify(statements));
+    void submit(body);
+  }, [manualModel, submit]);
+
   const handleClearAll = useCallback(() => {
     lastInputRef.current = null;
-    seedCounterRef.current = 0;
-    setManualSeed(null);
+    manualModel.reset();
+    releasePdf();
+    setParsedBaseline(null);
     setResult(null);
     setError(null);
     setSelectedPeriod('');
@@ -200,8 +256,9 @@ export default function AnalyzerApp() {
     setSupplemental(EMPTY_SUPPLEMENTAL);
     setDayCountBasis(365);
     setNetIncomeBasis('period');
+    setActiveView('analysis');
     setClearTick((tick) => tick + 1);
-  }, []);
+  }, [manualModel, releasePdf]);
 
   const handleSupplementalChange = useCallback((key: keyof SupplementalForm, value: string) => {
     setSupplemental((previous) => ({ ...previous, [key]: value }));
@@ -397,7 +454,7 @@ export default function AnalyzerApp() {
             clearSignal={clearTick}
           />
         ) : null}
-        {mode === 'manual' ? <ManualEntryPanel onAnalyze={handleManual} busy={loading} onValidationChange={handleManualValidation} seed={manualSeed} clearSignal={clearTick} /> : null}
+        {mode === 'manual' ? <ManualEntryPanel onAnalyze={handleManual} busy={loading} onValidationChange={handleManualValidation} model={manualModel} /> : null}
 
         <SupplementalPanel
           values={supplemental}
@@ -500,7 +557,11 @@ export default function AnalyzerApp() {
                 : null}
               <div className="ml-auto flex items-center gap-2">
                 <span className="rule-label">View</span>
-                {(['analysis', 'dashboard'] as const).map((view) => (
+                {((['analysis', 'dashboard', ...(parsedBaseline ? ['verify'] : [])] as const) as readonly (
+                  | 'analysis'
+                  | 'dashboard'
+                  | 'verify'
+                )[]).map((view) => (
                   <button
                     key={view}
                     type="button"
@@ -525,6 +586,15 @@ export default function AnalyzerApp() {
           </div>
 
           {activeView === 'dashboard' ? <DashboardTab result={result} selectedPeriod={selectedPeriod} /> : null}
+          {activeView === 'verify' && parsedBaseline ? (
+            <VerifyView
+              baseline={parsedBaseline}
+              model={manualModel}
+              pdfUrl={pdfUrl}
+              onRecompute={handleVerifyRecompute}
+              busy={loading}
+            />
+          ) : null}
           {activeView === 'analysis' ? (
           <>
 

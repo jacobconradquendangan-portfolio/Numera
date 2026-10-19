@@ -84,6 +84,23 @@ describe('parser hardening', () => {
     expect(values(income, 'other_operating_income')?.[2025]).toBeNull();
   });
 
+  it('treats a lone trailing paren (OCR-dropped opener) as accounting-negative', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF INCOME\t\t',
+        'Amounts in Million Pesos\t2025\t2024',
+        'Sales\t657,933\t594,900',
+        'Equity reserve for retirement plan\t3)\t(1)',
+        'Net income\t9,670\t7,068',
+      ].join('\n'),
+      options: { applyUnitScaling: false },
+    });
+
+    const income = doc.statements.income;
+    expect(income).not.toBeNull();
+    expect(values(income, 'equity_reserves')).toEqual({ 2025: -3, 2024: -1 });
+  });
+
   it('maps deferred tax assets, goodwill-net, and capital stock line items', () => {
     const doc = parseFinancialText({
       text: [

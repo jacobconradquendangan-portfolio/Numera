@@ -151,6 +151,26 @@ export interface AnnualNetIncomeReference {
   source: string;
 }
 
+export interface SearchablePdf {
+  base64: string;
+  pageCount: number;
+  mimeType: 'application/pdf';
+}
+
+export interface SourcePageWord {
+  text: string;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+export interface SourcePage {
+  page: number;
+  image: string;
+  words: SourcePageWord[];
+}
+
 export interface ParsedDocument {
   source: {
     filename?: string;
@@ -165,6 +185,8 @@ export interface ParsedDocument {
   validations: BalanceSheetValidation[];
   warnings: string[];
   annualNetIncome?: Record<string, AnnualNetIncomeReference>;
+  searchablePdf?: SearchablePdf;
+  sourcePages?: SourcePage[];
 }
 
 export interface ParserOptions {
@@ -1203,10 +1225,9 @@ function parseNumberCell(cell: unknown): number | null {
   s = s.replace(/[a-z₱$€£¥₹]/gi, '').replace(/=/g, '').trim();
   if (!s) return null;
   let negative = false;
-  const paren = /^\((.*)\)$/.exec(s);
-  if (paren) {
+  if (/^\(/.test(s) || /\)$/.test(s)) {
     negative = true;
-    s = paren[1].trim();
+    s = s.replace(/^\(+/, '').replace(/\)+$/, '').trim();
   }
   s = s.replace(/[^0-9.,+-]/g, '');
   if (!s) return null;
@@ -2254,6 +2275,18 @@ export async function parseFinancialDocument(input: ParseInput): Promise<ParsedD
           document = {
             ...ocrDocument,
             annualNetIncome: ocrDocument.annualNetIncome ?? document.annualNetIncome,
+            searchablePdf: ocr.searchablePdf
+              ? {
+                  base64: Buffer.from(ocr.searchablePdf).toString('base64'),
+                  pageCount: ocr.imageCount,
+                  mimeType: 'application/pdf',
+                }
+              : undefined,
+            sourcePages: ocr.sourcePages.map((page, index) => ({
+              page: index + 1,
+              image: page.image,
+              words: page.words,
+            })),
           };
         } else {
           document = { ...document, warnings: [...document.warnings, ...ocr.warnings] };

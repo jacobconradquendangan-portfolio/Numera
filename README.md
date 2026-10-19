@@ -50,7 +50,8 @@ leaves your device.
 | Capability | Description |
 | --- | --- |
 | **Multiple input paths** | Manual entry with an editable period grid and a searchable line-item combobox; paste statement text; or upload PDF, Excel (`.xlsx` / `.xls`) or CSV. |
-| **Scanned PDF fallback** | When a PDF renders its statements as images (no extractable text), Numera detects the embedded raster pages and runs an opt-in OCR fallback (`tesseract.js`) to read them, flagging every figure as machine-recognised so it can be checked. Discrete OCR is skipped when the digital text is already complete. |
+| **Scanned PDF fallback** | When a PDF renders its statements as images (no extractable text), Numera detects the embedded raster pages and runs an opt-in OCR fallback (`tesseract.js`) to read them, flagging every figure as machine-recognised so it can be checked. OCR is skipped when the digital text is already complete. |
+| **Searchable OCR output** | When a scanned PDF is read, Numera rebuilds the recognised pages into a PDF with an invisible text layer (`pdf-lib`) using the OCR word boxes — downloadable from the Verify view — so the converted document is searchable and selectable in any PDF reader. |
 | **Automatic line-item mapping** | A 70-category taxonomy matched by exact, substring and fuzzy (Jaccard ≥ 0.6) rules, with unit scaling auto-detected from `(in thousands/millions)` notes. |
 | **Balance-sheet validation** | Proves `Assets = Liabilities + Equity` within a configurable tolerance and surfaces clear, actionable warnings. |
 | **Vertical & horizontal analysis** | Every line item as a share of revenue (income statement), total assets (balance sheet) or operating cash flow (cash flow statement), plus period-over-period variance (Δ and %) in sortable tables. |
@@ -59,6 +60,7 @@ leaves your device.
 | **Multi-period ratios** | Every ratio is computed for every period, using true average balances once a prior period exists, so values, cards and charts follow the selected period. |
 | **Configurable day-count basis** | 365-day (default) or 360-day convention for receivables, inventory and defensive-interval days; every day-based solution shows the chosen basis. |
 | **Return basis toggle** | Switch ROE and ROA between the reported period's net income and trailing 12 months; the trailing figure is auto-derived from the prior fiscal-year net income found in the document (with the derivation shown in the solution), or you can enter your own **Trailing 12-Mo Net Income** override, which takes precedence. |
+| **Extraction verification** | After parsing a file or pasted text, a **Verify** view puts each Numera-extracted figure beside the manual grid, shows the source page/row with an OCR confidence badge, reports an overall match percentage, and lets you correct any flagged cell and recompute the ratios. Clicking a scanned figure opens an in-app page viewer that draws a highlight over the exact recognised word(s) — a built-in guarantee, independent of the browser's own PDF highlighting. |
 | **Transparent solutions** | Each ratio exposes its formula, the substituted source values (data lineage) and the step-by-step result, plus a citation linking to the Corporate Finance Institute page each formula follows — with a note wherever the engine's definition varies from CFI's (cash basis interest coverage, CAPEX to operating cash, cash ratio). |
 | **Financial health summary** | A rule-based narrative that reads the computed ratios and reports strengths and areas to watch across liquidity, profitability, leverage, coverage, efficiency, cash flow, growth and valuation — shown on screen and included in the report. Rules of thumb are cited from Corporate Finance Institute reference pages, with links in the summary and the PDF report. |
 | **Downloadable summary report** | Export a text-based PDF summary — financial health summary, overview, vertical and horizontal analysis (income, balance and cash flow), and every ratio's audit trail — for the selected period or all periods. |
@@ -109,7 +111,7 @@ and reusable outside the UI.
 | Language | TypeScript 5 (strict) |
 | Styling | Tailwind CSS v4 |
 | Charts | Recharts |
-| Parsing | `pdf-parse` + `tesseract.js` OCR fallback (PDF) · SheetJS `xlsx` (Excel/CSV) |
+| Parsing | `pdf-parse` + `tesseract.js` OCR fallback and `pdf-lib` searchable-layer output (PDF) · SheetJS `xlsx` (Excel/CSV) |
 | Testing | Vitest |
 | CI | GitHub Actions (typecheck · lint · test) |
 

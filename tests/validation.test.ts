@@ -23,6 +23,8 @@ describe('classifyNumber', () => {
   it('accepts plain, comma-grouped, parenthesised and dash values', () => {
     expect(classifyNumber('1,250')).toEqual({ kind: 'valid', value: 1250 });
     expect(classifyNumber('(500)')).toEqual({ kind: 'valid', value: -500 });
+    expect(classifyNumber('3)')).toEqual({ kind: 'valid', value: -3 });
+    expect(classifyNumber('(3')).toEqual({ kind: 'valid', value: -3 });
     expect(classifyNumber('$12,000')).toEqual({ kind: 'valid', value: 12000 });
     expect(classifyNumber('—')).toEqual({ kind: 'valid', value: 0 });
     expect(classifyNumber('12.5%')).toEqual({ kind: 'valid', value: 12.5 });

@@ -10,6 +10,9 @@ export type {
   StatementType,
   FinancialCategory,
   Section,
+  SearchablePdf,
+  SourcePage,
+  SourcePageWord,
 } from '@/lib/engine/parser';
 
 export type {

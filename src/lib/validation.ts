@@ -23,10 +23,9 @@ export function classifyNumber(raw: string | null | undefined): {
 
   let s = text;
   let parenthesized = false;
-  const paren = /^\((.*)\)$/.exec(s);
-  if (paren) {
+  if (/^\(/.test(s) || /\)$/.test(s)) {
     parenthesized = true;
-    s = paren[1].trim();
+    s = s.replace(/^\(+/, '').replace(/\)+$/, '').trim();
   }
   s = s.replace(/[^0-9.,+-]/g, '');
   if (!s) return { kind: 'invalid', value: null };

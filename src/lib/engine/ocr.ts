@@ -1,4 +1,5 @@
 import type { RawTable } from './parser';
+import { buildSearchablePdf, type SearchablePage, type SearchableWord } from './searchable-pdf';
 import { tmpdir } from 'node:os';
 
 interface OcrBBox {
@@ -35,11 +36,18 @@ interface OcrRow {
   cells: OcrCell[];
 }
 
+export interface OcrSourcePage {
+  image: string;
+  words: SearchableWord[];
+}
+
 export interface OcrResult {
   tables: RawTable[];
   warnings: string[];
   used: boolean;
   imageCount: number;
+  searchablePdf?: Uint8Array;
+  sourcePages: OcrSourcePage[];
 }
 
 export interface OcrOptions {
@@ -175,12 +183,28 @@ function pageToTable(page: OcrPage, name: string): RawTable | null {
   return periods && periods.length ? { name, rows, periods } : { name, rows };
 }
 
+function collectWords(page: OcrPage): SearchableWord[] {
+  const words: SearchableWord[] = [];
+  for (const block of page.blocks ?? []) {
+    for (const paragraph of block.paragraphs ?? []) {
+      for (const line of paragraph.lines ?? []) {
+        for (const word of line.words ?? []) {
+          if (word.bbox && word.text && word.text.trim()) {
+            words.push({ text: word.text, x0: word.bbox.x0, y0: word.bbox.y0, x1: word.bbox.x1, y1: word.bbox.y1 });
+          }
+        }
+      }
+    }
+  }
+  return words;
+}
+
 export async function ocrEmbeddedImages(buffer: Buffer, options?: OcrOptions): Promise<OcrResult> {
   const minBytes = options?.minImageBytes ?? DEFAULT_MIN_IMAGE_BYTES;
   const maxImages = options?.maxImages ?? DEFAULT_MAX_IMAGES;
   const images = extractEmbeddedJpegs(buffer, minBytes, maxImages);
 
-  if (!images.length) return { tables: [], warnings: [], used: false, imageCount: 0 };
+  if (!images.length) return { tables: [], warnings: [], used: false, imageCount: 0, sourcePages: [] };
 
   let createWorker: typeof import('tesseract.js').createWorker;
   try {
@@ -191,11 +215,13 @@ export async function ocrEmbeddedImages(buffer: Buffer, options?: OcrOptions): P
       warnings: ['Detected image-only pages, but the OCR engine (tesseract.js) is not available.'],
       used: false,
       imageCount: images.length,
+      sourcePages: [],
     };
   }
 
   const warnings: string[] = [];
   const tables: RawTable[] = [];
+  const searchablePages: SearchablePage[] = [];
   let worker: Awaited<ReturnType<typeof createWorker>> | null = null;
 
   try {
@@ -203,13 +229,26 @@ export async function ocrEmbeddedImages(buffer: Buffer, options?: OcrOptions): P
     await worker.setParameters({ preserve_interword_spaces: '1' });
     for (let index = 0; index < images.length; index += 1) {
       const { data } = await worker.recognize(images[index], {}, { text: true, blocks: true });
-      const table = pageToTable(data as unknown as OcrPage, `ocr image ${index + 1}`);
+      const page = data as unknown as OcrPage;
+      const table = pageToTable(page, `ocr image ${index + 1}`);
       if (table) tables.push(table);
+      searchablePages.push({ jpeg: images[index], words: collectWords(page) });
     }
   } catch (error) {
     warnings.push(`OCR fallback failed: ${error instanceof Error ? error.message : 'unknown error'}.`);
   } finally {
     if (worker) await worker.terminate();
+  }
+
+  let searchablePdf: Uint8Array | undefined;
+  if (searchablePages.length) {
+    try {
+      searchablePdf = await buildSearchablePdf(searchablePages);
+    } catch (error) {
+      warnings.push(
+        `Built-in OCR text layer could not be generated: ${error instanceof Error ? error.message : 'unknown error'}.`
+      );
+    }
   }
 
   if (tables.length) {
@@ -218,5 +257,10 @@ export async function ocrEmbeddedImages(buffer: Buffer, options?: OcrOptions): P
     );
   }
 
-  return { tables, warnings, used: true, imageCount: images.length };
+  const sourcePages: OcrSourcePage[] = searchablePages.map((page) => ({
+    image: Buffer.from(page.jpeg).toString('base64'),
+    words: page.words,
+  }));
+
+  return { tables, warnings, used: true, imageCount: images.length, searchablePdf, sourcePages };
 }
