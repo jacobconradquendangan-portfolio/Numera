@@ -61,12 +61,15 @@ export type FinancialCategory =
   | 'other_current_liabilities'
   | 'total_current_liabilities'
   | 'long_term_debt'
+  | 'deferred_tax_liabilities'
+  | 'retirement_benefits_liability'
   | 'other_non_current_liabilities'
   | 'total_liabilities'
   | 'common_stock'
   | 'additional_paid_in_capital'
   | 'retained_earnings'
   | 'treasury_stock'
+  | 'noncontrolling_interests'
   | 'other_equity'
   | 'total_equity'
   | 'total_liabilities_and_equity'
@@ -99,6 +102,11 @@ export type FinancialCategory =
   | 'interest_received'
   | 'income_taxes_paid'
   | 'contributions_to_retirement_fund'
+  | 'retirement_benefits_expense'
+  | 'unrealized_foreign_exchange_losses'
+  | 'impairment_reversal'
+  | 'other_operating_gains_losses'
+  | 'other_investing_adjustments'
   | 'proceeds_from_sale_of_assets'
   | 'additions_to_investment_property'
   | 'dividends_received'
@@ -169,12 +177,6 @@ export interface AnnualNetIncomeReference {
   source: string;
 }
 
-export interface SearchablePdf {
-  base64: string;
-  pageCount: number;
-  mimeType: 'application/pdf';
-}
-
 export interface SourcePageWord {
   text: string;
   x0: number;
@@ -203,7 +205,6 @@ export interface ParsedDocument {
   validations: BalanceSheetValidation[];
   warnings: string[];
   annualNetIncome?: Record<string, AnnualNetIncomeReference>;
-  searchablePdf?: SearchablePdf;
   sourcePages?: SourcePage[];
 }
 
@@ -256,6 +257,7 @@ interface IntermediateStatement {
   items: Map<FinancialCategory, NormalizedLineItem>;
   unmapped: string[];
   warnings: string[];
+  isComprehensive?: boolean;
 }
 
 interface MatchResult {
@@ -518,7 +520,14 @@ const TAXONOMY: CategoryDefinition[] = [
       'attributable to non controlling interests',
       'attributable to noncontrolling interests',
       'net income attributable to non controlling interests',
+      'net income attributable to noncontrolling interests',
       'net income attributable to minority interests',
+      'non controlling interests',
+      'noncontrolling interests',
+      'non controlling interest',
+      'noncontrolling interest',
+      'minority interests',
+      'minority interest',
     ],
   },
   {
@@ -600,6 +609,7 @@ const TAXONOMY: CategoryDefinition[] = [
     label: 'Other Current Assets',
     synonyms: [
       'other current assets',
+      'other currentassets',
       'total other current assets',
       'other current assets net',
     ],
@@ -844,6 +854,7 @@ const TAXONOMY: CategoryDefinition[] = [
       'current lease liability',
       'current lease liabilities',
       'lease liability current',
+      'lease liabilities current portion',
     ],
   },
   {
@@ -869,6 +880,33 @@ const TAXONOMY: CategoryDefinition[] = [
     ],
   },
   {
+    key: 'deferred_tax_liabilities',
+    statement: 'balance',
+    section: 'non_current_liabilities',
+    label: 'Deferred Tax Liabilities',
+    synonyms: [
+      'deferred tax liabilities',
+      'deferred tax liability',
+      'deferred tax liabilities net',
+      'deferred income tax liabilities',
+      'net deferred tax liabilities',
+    ],
+  },
+  {
+    key: 'retirement_benefits_liability',
+    statement: 'balance',
+    section: 'non_current_liabilities',
+    label: 'Retirement Benefits Liability',
+    synonyms: [
+      'retirement benefits liability',
+      'retirement benefits liability net',
+      'retirement benefit liability',
+      'net retirement benefits liability',
+      'pension obligations',
+      'pension liability',
+    ],
+  },
+  {
     key: 'other_non_current_liabilities',
     statement: 'balance',
     section: 'non_current_liabilities',
@@ -876,12 +914,7 @@ const TAXONOMY: CategoryDefinition[] = [
     synonyms: [
       'other non current liabilities',
       'other long term liabilities',
-      'deferred tax liabilities',
       'operating lease liabilities',
-      'pension obligations',
-      'retirement benefits liability',
-      'retirement benefits liability net',
-      'pension liability',
     ],
   },
   {
@@ -891,9 +924,11 @@ const TAXONOMY: CategoryDefinition[] = [
     label: 'Non-Current Lease Liabilities',
     synonyms: [
       'lease liability net of current portion',
+      'lease liabilities net of current portion',
       'non current lease liability',
       'non current lease liabilities',
       'lease liability non current',
+      'lease liabilities non current',
     ],
   },
   {
@@ -969,6 +1004,20 @@ const TAXONOMY: CategoryDefinition[] = [
     synonyms: ['treasury stock', 'treasury shares', 'treasury stock at cost'],
   },
   {
+    key: 'noncontrolling_interests',
+    statement: 'balance',
+    section: 'equity',
+    label: 'Non-controlling Interests',
+    synonyms: [
+      'non controlling interests',
+      'noncontrolling interests',
+      'non controlling interest',
+      'noncontrolling interest',
+      'minority interests',
+      'minority interest',
+    ],
+  },
+  {
     key: 'other_equity',
     statement: 'balance',
     section: 'equity',
@@ -979,8 +1028,6 @@ const TAXONOMY: CategoryDefinition[] = [
       'accumulated other comprehensive loss',
       'other stockholders equity',
       'other shareholders equity',
-      'noncontrolling interests',
-      'minority interest',
     ],
   },
   {
@@ -1114,6 +1161,59 @@ const TAXONOMY: CategoryDefinition[] = [
     ],
   },
   {
+    key: 'retirement_benefits_expense',
+    statement: 'cashflow',
+    section: 'operating_activities',
+    label: 'Retirement Benefits Expense',
+    synonyms: [
+      'retirement benefits costs',
+      'retirement benefit costs',
+      'retirement benefits expense',
+      'retirement benefit expense',
+      'pension expense',
+      'pension costs',
+    ],
+  },
+  {
+    key: 'unrealized_foreign_exchange_losses',
+    statement: 'cashflow',
+    section: 'operating_activities',
+    label: 'Unrealized Foreign Exchange Losses',
+    synonyms: [
+      'unrealized foreign exchange losses',
+      'unrealized foreign exchange losses net',
+      'unrealized foreign exchange gains losses',
+      'unrealized forex losses',
+      'unrealized foreign exchange gain loss',
+    ],
+  },
+  {
+    key: 'impairment_reversal',
+    statement: 'cashflow',
+    section: 'operating_activities',
+    label: 'Impairment Reversal',
+    synonyms: [
+      'net reversal of allowance for impairment of receivables and inventories',
+      'reversal of allowance for impairment',
+      'reversal of impairment',
+      'reversal of impairment losses',
+      'impairment reversal',
+      'net impairment losses',
+    ],
+  },
+  {
+    key: 'other_operating_gains_losses',
+    statement: 'cashflow',
+    section: 'operating_activities',
+    label: 'Other Operating Gains (Losses)',
+    synonyms: [
+      'other gains net',
+      'other losses net',
+      'other operating gains losses',
+      'other gains losses net',
+    ],
+  },
+  {
     key: 'net_cash_from_operating_activities',
     statement: 'cashflow',
     section: 'operating_activities',
@@ -1173,6 +1273,18 @@ const TAXONOMY: CategoryDefinition[] = [
       'acquisition of property plant and equipment',
       'capital spending',
       'capex',
+    ],
+  },
+  {
+    key: 'other_investing_adjustments',
+    statement: 'cashflow',
+    section: 'investing_activities',
+    label: 'Other Investing Adjustments',
+    synonyms: [
+      'increase in other noncurrent assets',
+      'decrease in other noncurrent assets',
+      'other investing adjustments',
+      'other noncurrent assets',
     ],
   },
   {
@@ -1415,14 +1527,16 @@ const TAXONOMY: CategoryDefinition[] = [
 const TAXONOMY_INDEX = new Map<FinancialCategory, number>();
 TAXONOMY.forEach((def, index) => TAXONOMY_INDEX.set(def.key, index));
 
-const EXACT_INDEX = new Map<string, CategoryDefinition>();
+const EXACT_INDEX = new Map<string, CategoryDefinition[]>();
 const INCLUDE_INDEX: { syn: string; def: CategoryDefinition }[] = [];
 
 for (const def of TAXONOMY) {
   for (const syn of [def.label, ...def.synonyms]) {
     const norm = normalizeLabel(syn);
     if (!norm) continue;
-    if (!EXACT_INDEX.has(norm)) EXACT_INDEX.set(norm, def);
+    const matches = EXACT_INDEX.get(norm) ?? [];
+    if (!matches.includes(def)) matches.push(def);
+    EXACT_INDEX.set(norm, matches);
     if (norm.includes(' ')) INCLUDE_INDEX.push({ syn: norm, def });
   }
 }
@@ -1445,12 +1559,24 @@ function normalizeLabel(input: string): string {
   return input
     .toLowerCase()
     .replace(/&/g, ' and ')
-    .replace(/['’`]/g, '')
+    .replace(/['\u2018\u2019`]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\bnon\s+current\b/g, 'noncurrent')
     .replace(/\bnon\s+controlling\b/g, 'noncontrolling')
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+const IGNORABLE_UNMAPPED_RE =
+  /\b(?:corporation and subsidiaries|statements? of|amounts in|for the (?:three|six|nine|twelve) months ended|months? ended)\b/;
+const PER_SHARE_RE = /\b(?:earnings?|loss)\s+per\s+(?:common\s+)?share\b/;
+
+function isIgnorableUnmappedLabel(label: string): boolean {
+  const norm = normalizeLabel(label);
+  if (!norm) return true;
+  if (PER_SHARE_RE.test(norm)) return true;
+  if (/^(?:nata|nate|note|notes|forward)$/.test(norm)) return true;
+  return IGNORABLE_UNMAPPED_RE.test(norm);
 }
 
 function normalizeDecimalSeparators(input: string): string | null {
@@ -1646,13 +1772,16 @@ function parsePeriodHeader(cells: string[]): PeriodColumn[] | null {
   return null;
 }
 
-function alignToPeriods(entries: NumericEntry[], periods: PeriodColumn[]): (number | null)[] {
-  const allExact = periods.every((period) => entries.some((entry) => entry.col === period.col));
-  if (allExact && entries.length === periods.length) {
-    return periods.map((period) => (entries.find((entry) => entry.col === period.col) as NumericEntry).value);
+function alignToPeriods(entries: NumericEntry[], periods: PeriodColumn[], rowWidth: number): (number | null)[] {
+  const count = periods.length;
+  const firstPeriodCol = Math.max(0, rowWidth - count);
+  const columns = periods.map((period, index) => ({ ...period, col: firstPeriodCol + index }));
+  const allExact = columns.every((period) => entries.some((entry) => entry.col === period.col));
+  if (allExact && entries.length === count) {
+    return columns.map((period) => (entries.find((entry) => entry.col === period.col) as NumericEntry).value);
   }
-  if (entries.length >= periods.length) return alignRight(entries, periods.length);
-  return periods.map((period) => {
+  if (entries.length >= count) return alignRight(entries, count);
+  return columns.map((period) => {
     const exact = entries.find((entry) => entry.col === period.col);
     return exact ? exact.value : null;
   });
@@ -1687,34 +1816,78 @@ function detectStatementByHeading(rows: string[][]): StatementType | null {
   return null;
 }
 
-function matchCategory(rawLabel: string, minConfidence: number): MatchResult {
+function isComprehensiveIncomeOnlyTable(rows: string[][]): boolean {
+  const text = rows.slice(0, 12).flat().join(' ').toLowerCase();
+  if (!/\bstatements? of comprehensive income\b/.test(text)) return false;
+  return !/\b(?:income|profit or loss)\s+and\s+comprehensive income\b/.test(text);
+}
+
+const CASHFLOW_LABEL_ALIASES: Record<string, FinancialCategory> = {
+  'lease liabilities': 'payments_of_lease_liabilities',
+};
+
+function pickStatementMatch(
+  candidates: CategoryDefinition[],
+  statement: StatementType | null
+): CategoryDefinition | null {
+  if (!candidates.length) return null;
+  if (statement) {
+    const exact = candidates.find((candidate) => candidate.statement === statement);
+    if (exact) return exact;
+  }
+  return candidates[0];
+}
+
+function matchCategory(
+  rawLabel: string,
+  minConfidence: number,
+  statement: StatementType | null = null
+): MatchResult {
   const norm = normalizeLabel(rawLabel);
   if (!norm) return { category: null, confidence: 0 };
-  const exact = EXACT_INDEX.get(norm);
-  if (exact) return { category: exact.key, confidence: 1 };
+  if (PER_SHARE_RE.test(norm)) return { category: null, confidence: 0 };
+  const result = (category: FinancialCategory | null, confidence: number): MatchResult => {
+    if (category === 'net_income_attributable_to_parent' && !/\b(?:net income|attributable)\b/.test(norm)) {
+      return { category: null, confidence: 0 };
+    }
+    return { category, confidence };
+  };
+  const alias = statement === 'cashflow' ? CASHFLOW_LABEL_ALIASES[norm] : undefined;
+  if (alias) return result(alias, 0.9);
+  const exact = pickStatementMatch(EXACT_INDEX.get(norm) ?? [], statement);
+  if (exact) return result(exact.key, 1);
   const singular = norm.endsWith('ies') ? `${norm.slice(0, -3)}y` : norm.endsWith('s') ? norm.slice(0, -1) : '';
   if (singular) {
-    const singularMatch = EXACT_INDEX.get(singular);
-    if (singularMatch) return { category: singularMatch.key, confidence: 0.92 };
+    const singularMatch = pickStatementMatch(EXACT_INDEX.get(singular) ?? [], statement);
+    if (singularMatch) return result(singularMatch.key, 0.92);
   }
+  let includeFallback: CategoryDefinition | null = null;
   for (const candidate of INCLUDE_INDEX) {
-    if (norm.includes(candidate.syn)) {
-      return { category: candidate.def.key, confidence: 0.9 };
+    if (!norm.includes(candidate.syn)) continue;
+    if (!statement || candidate.def.statement === statement) {
+      return result(candidate.def.key, 0.9);
     }
+    if (!includeFallback) includeFallback = candidate.def;
   }
+  if (includeFallback) return result(includeFallback.key, 0.88);
   const tokens = new Set(norm.split(' ').filter(Boolean));
   let best: { def: CategoryDefinition; score: number } | null = null;
+  let bestForStatement: { def: CategoryDefinition; score: number } | null = null;
   for (const def of TAXONOMY) {
     for (const syn of [def.label, ...def.synonyms]) {
       const normalizedSyn = normalizeLabel(syn);
       if (!normalizedSyn) continue;
       const score = jaccard(tokens, new Set(normalizedSyn.split(' ').filter(Boolean)));
       if (!best || score > best.score) best = { def, score };
+      if (statement && def.statement === statement && (!bestForStatement || score > bestForStatement.score)) {
+        bestForStatement = { def, score };
+      }
     }
   }
-  if (best && best.score >= 0.6) {
-    const confidence = Math.min(0.85, 0.5 + best.score * 0.35);
-    if (confidence >= minConfidence) return { category: best.def.key, confidence };
+  const chosen = bestForStatement && bestForStatement.score >= 0.6 ? bestForStatement : best;
+  if (chosen && chosen.score >= 0.6) {
+    const confidence = Math.min(0.85, 0.5 + chosen.score * 0.35);
+    if (confidence >= minConfidence) return result(chosen.def.key, confidence);
   }
   return { category: null, confidence: 0 };
 }
@@ -1862,7 +2035,7 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
     warnings.push(`Applied unit scaling of x${multiplier} to table "${table.name}" from an "(in thousands/millions)" note.`);
   }
 
-  const parsedRows: { label: string; entries: NumericEntry[]; rowIndex: number }[] = [];
+  const parsedRows: { label: string; entries: NumericEntry[]; rowIndex: number; rowWidth: number }[] = [];
   let maxNumericCount = 0;
   effectiveTable.rows.forEach((cells, rowIndex) => {
     if (headerRows.has(rowIndex)) return;
@@ -1872,7 +2045,7 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
     const firstNumericCol = entries[0].col;
     const label = extractLabel(cells, firstNumericCol);
     if (!label) return;
-    parsedRows.push({ label, entries, rowIndex });
+    parsedRows.push({ label, entries, rowIndex, rowWidth: cells.length });
   });
 
   if (!parsedRows.length) return null;
@@ -1887,15 +2060,17 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
   const unmapped: string[] = [];
   const items = new Map<FinancialCategory, NormalizedLineItem>();
   const statementScores: Record<StatementType, number> = { income: 0, balance: 0, cashflow: 0 };
+  const headingType = options.hint ?? detectStatementByHeading(effectiveTable.rows);
+  const comprehensiveOnly = !options.hint && isComprehensiveIncomeOnlyTable(effectiveTable.rows);
 
   for (const parsed of parsedRows) {
-    const match = matchCategory(parsed.label, options.minMatchConfidence);
+    const match = matchCategory(parsed.label, options.minMatchConfidence, headingType);
     const rawValues = periods
-      ? alignToPeriods(parsed.entries, periods)
+      ? alignToPeriods(parsed.entries, periods, parsed.rowWidth)
       : alignRight(parsed.entries, periodLabels.length);
     const hasValue = rawValues.some((value) => value !== null);
     if (!match.category) {
-      if (hasValue) unmapped.push(parsed.label);
+      if (hasValue && !isIgnorableUnmappedLabel(parsed.label)) unmapped.push(parsed.label);
       continue;
     }
     const def = TAXONOMY[TAXONOMY_INDEX.get(match.category) as number];
@@ -1921,12 +2096,18 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
         );
         continue;
       }
+      let conflicting = false;
       for (const period of periodLabels) {
-        if (existing.values[period] === null && values[period] !== null) {
+        if (values[period] === null) continue;
+        if (existing.values[period] === null) {
           existing.values[period] = values[period];
+        } else if (existing.values[period] !== values[period]) {
+          conflicting = true;
         }
       }
-      warnings.push(`Duplicate line for "${def.label}" found in table "${table.name}"; merged values.`);
+      if (conflicting) {
+        warnings.push(`Conflicting duplicate for "${def.label}" in table "${table.name}"; kept earlier values.`);
+      }
       continue;
     }
     items.set(match.category, {
@@ -1944,22 +2125,15 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
   if (items.size < 2) return null;
   if (!periods && items.size < 3) return null;
 
-  let type: StatementType;
-  if (options.hint) {
-    type = options.hint;
-  } else {
-    const heading = detectStatementByHeading(effectiveTable.rows);
-    type = heading ?? (Object.keys(statementScores) as StatementType[]).reduce((best, candidate) =>
+  const type: StatementType =
+    headingType ??
+    (Object.keys(statementScores) as StatementType[]).reduce((best, candidate) =>
       statementScores[candidate] > statementScores[best] ? candidate : best
     );
-  }
 
-  if (type === 'cashflow') {
-    for (const [category, item] of [...items]) {
-      if (getDefinition(category).statement === 'cashflow') continue;
-      unmapped.push(item.rawLabel);
-      items.delete(category);
-    }
+  for (const category of [...items.keys()]) {
+    if (getDefinition(category).statement === type) continue;
+    items.delete(category);
   }
 
   return {
@@ -1970,6 +2144,7 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
     items,
     unmapped,
     warnings,
+    isComprehensive: comprehensiveOnly,
   };
 }
 
@@ -1988,7 +2163,9 @@ function roundValue(value: number): number {
 }
 
 function mergeByType(statements: IntermediateStatement[], type: StatementType): NormalizedStatement | null {
-  const relevant = statements.filter((statement) => statement.type === type);
+  const matching = statements.filter((statement) => statement.type === type);
+  const primary = type === 'income' ? matching.filter((statement) => !statement.isComprehensive) : matching;
+  const relevant = primary.length ? primary : matching;
   if (!relevant.length) return null;
   const periods: string[] = [];
   const items = new Map<FinancialCategory, NormalizedLineItem>();
@@ -2646,13 +2823,6 @@ export async function parseFinancialDocument(input: ParseInput): Promise<ParsedD
           document = {
             ...ocrDocument,
             annualNetIncome: ocrDocument.annualNetIncome ?? document.annualNetIncome,
-            searchablePdf: ocr.searchablePdf
-              ? {
-                  base64: Buffer.from(ocr.searchablePdf).toString('base64'),
-                  pageCount: ocr.imageCount,
-                  mimeType: 'application/pdf',
-                }
-              : undefined,
             sourcePages: ocr.sourcePages.map((page, index) => ({
               page: index + 1,
               image: page.image,

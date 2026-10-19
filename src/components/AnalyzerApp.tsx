@@ -27,6 +27,7 @@ import type {
   NetIncomeBasis,
   NormalizedStatement,
   ParsedDocument,
+  SourcePage,
   SupplementalForm,
 } from '@/lib/types';
 import { cx } from '@/lib/format';
@@ -61,6 +62,13 @@ const MODES: { id: InputMode; label: string; beta?: boolean }[] = [
   { id: 'paste', label: 'Paste text' },
   { id: 'upload', label: 'Upload file', beta: true },
 ];
+
+function decodeBase64(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
 
 export default function AnalyzerApp() {
   const [result, setResult] = useState<AnalyzeSuccess | null>(null);
@@ -117,14 +125,16 @@ export default function AnalyzerApp() {
     [releasePdf]
   );
 
-  const loadSearchableBase64 = useCallback(
-    (base64: string) => {
+  const loadSearchablePages = useCallback(
+    async (pages: SourcePage[]) => {
+      if (!pages.length) return;
       try {
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+        const { buildSearchablePdf } = await import('@/lib/engine/searchable-pdf');
+        const bytes = await buildSearchablePdf(
+          pages.map((page) => ({ jpeg: decodeBase64(page.image), words: page.words }))
+        );
         releaseSearchable();
-        const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+        const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
         searchableUrlRef.current = url;
         setSearchableUrl(url);
       } catch {
@@ -182,8 +192,7 @@ export default function AnalyzerApp() {
           const parsedInput = lastInputRef.current?.kind === 'file' || lastInputRef.current?.kind === 'text';
           if (parsedInput) {
             setParsedBaseline(payload.document);
-            const searchable = payload.document.searchablePdf;
-            if (searchable) loadSearchableBase64(searchable.base64);
+            if (payload.document.sourcePages?.length) void loadSearchablePages(payload.document.sourcePages);
             const statements = [
               payload.document.statements.income,
               payload.document.statements.balance,
@@ -199,7 +208,7 @@ export default function AnalyzerApp() {
         setLoading(false);
       }
     },
-    [supplemental, dayCountBasis, netIncomeBasis, manualModel, loadSearchableBase64]
+    [supplemental, dayCountBasis, netIncomeBasis, manualModel, loadSearchablePages]
   );
 
   const handleFile = useCallback(

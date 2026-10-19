@@ -9,7 +9,7 @@ export interface SearchableWord {
 }
 
 export interface SearchablePage {
-  jpeg: Buffer;
+  jpeg: Uint8Array;
   words: SearchableWord[];
 }
 

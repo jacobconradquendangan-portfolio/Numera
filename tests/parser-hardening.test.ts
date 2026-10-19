@@ -90,7 +90,7 @@ describe('parser hardening', () => {
         'CONSOLIDATED INTERIM STATEMENTS OF INCOME\t\t',
         'Amounts in Million Pesos\t2025\t2024',
         'Sales\t657,933\t594,900',
-        'Equity reserve for retirement plan\t3)\t(1)',
+        'Selling and administrative expenses\t3)\t(1)',
         'Net income\t9,670\t7,068',
       ].join('\n'),
       options: { applyUnitScaling: false },
@@ -98,7 +98,7 @@ describe('parser hardening', () => {
 
     const income = doc.statements.income;
     expect(income).not.toBeNull();
-    expect(values(income, 'equity_reserves')).toEqual({ 2025: -3, 2024: -1 });
+    expect(values(income, 'selling_general_and_administrative')).toEqual({ 2025: -3, 2024: -1 });
   });
 
   it('maps deferred tax assets, goodwill-net, and capital stock line items', () => {
@@ -137,6 +137,7 @@ describe('parser hardening', () => {
 
     const balance = doc.statements.balance;
     expect(balance).not.toBeNull();
+    expect(values(balance, 'noncontrolling_interests')).toEqual({ 2025: 10314, 2024: 9093 });
     expect(values(balance, 'equity_attributable_to_parent')).toEqual({ 2025: 103105, 2024: 95117 });
     expect(values(balance, 'total_equity')).toEqual({ 2025: 113419, 2024: 104210 });
   });
@@ -401,5 +402,135 @@ describe('parser hardening', () => {
     });
 
     expect(doc.annualNetIncome).toBeUndefined();
+  });
+
+  it('separates deferred tax and retirement liabilities and maps OCR current assets', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF FINANCIAL POSITION\t\t',
+        'Note\t2025\t2024',
+        'Other currentassets\t~~\t6\t4,686\t~~\t5,108',
+        'Deferred tax liabilities - net\t7,937\t6,719',
+        'Retirement benefits liability - net\t3,456\t3,661',
+        'Other noncurrent liabilities\t474\t487',
+        'Lease liabilities - current portion\t1,447\t1,295',
+        'Lease liabilities - net of current portion\t12,500\t12,120',
+        'Total Noncurrent Liabilities\t143,751\t112,333',
+      ].join('\n'),
+      options: { applyUnitScaling: false },
+    });
+
+    const balance = doc.statements.balance;
+    expect(balance).not.toBeNull();
+    expect(values(balance, 'other_current_assets')).toEqual({ 2025: 4686, 2024: 5108 });
+    expect(values(balance, 'deferred_tax_liabilities')).toEqual({ 2025: 7937, 2024: 6719 });
+    expect(values(balance, 'retirement_benefits_liability')).toEqual({ 2025: 3456, 2024: 3661 });
+    expect(values(balance, 'other_non_current_liabilities')).toEqual({ 2025: 474, 2024: 487 });
+    expect(values(balance, 'current_lease_liability')).toEqual({ 2025: 1447, 2024: 1295 });
+    expect(values(balance, 'non_current_lease_liability')).toEqual({ 2025: 12500, 2024: 12120 });
+    expect(balance?.warnings.some((warning) => /Conflicting values/.test(warning))).toBe(false);
+  });
+
+  it('maps non-controlling interests by statement type', () => {
+    const incomeDoc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF INCOME\t\t',
+        'Note\t2025\t2024',
+        'Sales\t594,900\t657,933',
+        'Net income\t9,670\t7,068',
+        'Attributable to:',
+        'Non-controlling interests\t724\t279',
+      ].join('\n'),
+      options: { applyUnitScaling: false },
+    });
+
+    const income = incomeDoc.statements.income;
+    expect(income).not.toBeNull();
+    expect(values(income, 'net_income_attributable_to_noncontrolling_interests')).toEqual({
+      2025: 724,
+      2024: 279,
+    });
+    expect(values(income, 'other_equity')).toBeNull();
+  });
+
+  it('ignores a standalone comprehensive income statement when a primary income statement exists', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF INCOME\t\t',
+        'Note\t2025\t2024',
+        'Sales\t594,900\t657,933',
+        'Net income\t9,670\t7,068',
+        'Attributable to:',
+        'Non-controlling interests\t724\t279',
+        '\f',
+        'CONSOLIDATED INTERIM STATEMENTS OF COMPREHENSIVE INCOME\t\t',
+        'Note\t2025\t2024',
+        'Net income\t9,670\t7,068',
+        'Other comprehensive income\t3,453\t6,471',
+        'Total comprehensive income\t13,123\t13,545',
+        'Attributable to:',
+        'Non-controlling interests\t1,316\t1,396',
+      ].join('\n'),
+      options: { applyUnitScaling: false },
+    });
+
+    const income = doc.statements.income;
+    expect(income).not.toBeNull();
+    expect(values(income, 'net_income')).toEqual({ 2025: 9670, 2024: 7068 });
+    expect(values(income, 'net_income_attributable_to_noncontrolling_interests')).toEqual({
+      2025: 724,
+      2024: 279,
+    });
+    expect(values(income, 'equity_reserves')).toBeNull();
+    expect(doc.warnings.some((warning) => /Conflicting values/.test(warning))).toBe(false);
+  });
+
+  it('ignores earnings-per-share lines instead of treating them as net income', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF INCOME\t\t',
+        'Note\t2025\t2024',
+        'Net income\t9,670\t7,068',
+        'Attributable to: Equity holders of the Parent Company\t8,946\t6,789',
+        'Basic/diluted earnings per common share\t0.60\t0.43',
+      ].join('\n'),
+      options: { applyUnitScaling: false },
+    });
+
+    const income = doc.statements.income;
+    expect(income).not.toBeNull();
+    expect(values(income, 'net_income_attributable_to_parent')).toEqual({ 2025: 8946, 2024: 6789 });
+    expect(income?.unmappedLabels).toEqual([]);
+  });
+
+  it('maps cash-flow adjustments and ignores statement headers', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF CASH FLOWS\t\t',
+        'For the Nine Months Ended\t2025\t2024',
+        'Nata\t2025\t2024',
+        'Income before income tax\t12,652\t8,749',
+        'Retirement benefits costs\t300\t232',
+        'Unrealized foreign exchange losses - net\t309\t249',
+        'Net reversal of allowance for impairment of receivables and inventories\t(50)\t(53)',
+        'Other gains — net\t(1,111)\t(278)',
+        'Increase in other noncurrent assets\t(3)\t-',
+        'Lease liabilities\t(1,627)\t(2,186)',
+        'Net cash flows provided by operating activities\t51,469\t17,697',
+        'Net cash flows used in investing activities\t(4,948)\t(7,852)',
+        'Net cash flows provided by (used in) financing activities\t(36,840)\t9,451',
+      ].join('\n'),
+      options: { applyUnitScaling: false },
+    });
+
+    const cashflow = doc.statements.cashflow;
+    expect(cashflow).not.toBeNull();
+    expect(values(cashflow, 'retirement_benefits_expense')).toEqual({ 2025: 300, 2024: 232 });
+    expect(values(cashflow, 'unrealized_foreign_exchange_losses')).toEqual({ 2025: 309, 2024: 249 });
+    expect(values(cashflow, 'impairment_reversal')).toEqual({ 2025: -50, 2024: -53 });
+    expect(values(cashflow, 'other_operating_gains_losses')).toEqual({ 2025: -1111, 2024: -278 });
+    expect(values(cashflow, 'other_investing_adjustments')).toEqual({ 2025: -3, 2024: 0 });
+    expect(values(cashflow, 'payments_of_lease_liabilities')).toEqual({ 2025: -1627, 2024: -2186 });
+    expect(cashflow?.unmappedLabels).toEqual([]);
   });
 });

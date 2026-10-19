@@ -111,7 +111,7 @@ export default function VerifyView({ baseline, model, pdfUrl, searchableUrl, onR
   const sourcePages = baseline.sourcePages ?? null;
   const hasSourcePages = Boolean(sourcePages?.length);
   const pageCount = sourcePages?.length ?? null;
-  const openUrl = hasSourcePages ? searchableUrl : pdfUrl;
+  const openUrl = hasSourcePages ? searchableUrl ?? pdfUrl : pdfUrl;
   const sourcePage = target?.page != null ? sourcePages?.find((page) => page.page === target.page) ?? null : null;
   const highlightIdx = useMemo(
     () => (sourcePage && target ? highlightWordIndexes(sourcePage.words, target.terms) : []),
@@ -333,7 +333,7 @@ export default function VerifyView({ baseline, model, pdfUrl, searchableUrl, onR
             </div>
             <span className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-faint">{targetStatus}</span>
             <div className="ml-auto flex items-center gap-3">
-              {baseline.searchablePdf && searchableUrl ? (
+              {hasSourcePages && searchableUrl ? (
                 <a
                   href={searchableUrl}
                   download={`${(baseline.source.filename ?? 'statements').replace(/\.[a-z0-9]+$/i, '')}-searchable.pdf`}

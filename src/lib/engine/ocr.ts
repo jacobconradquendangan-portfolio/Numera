@@ -1,5 +1,5 @@
 import type { RawTable } from './parser';
-import { buildSearchablePdf, type SearchablePage, type SearchableWord } from './searchable-pdf';
+import type { SearchableWord } from './searchable-pdf';
 import { tmpdir } from 'node:os';
 
 interface OcrBBox {
@@ -46,7 +46,6 @@ export interface OcrResult {
   warnings: string[];
   used: boolean;
   imageCount: number;
-  searchablePdf?: Uint8Array;
   sourcePages: OcrSourcePage[];
 }
 
@@ -221,7 +220,7 @@ export async function ocrEmbeddedImages(buffer: Buffer, options?: OcrOptions): P
 
   const warnings: string[] = [];
   const tables: RawTable[] = [];
-  const searchablePages: SearchablePage[] = [];
+  const searchablePages: { jpeg: Buffer; words: SearchableWord[] }[] = [];
   let worker: Awaited<ReturnType<typeof createWorker>> | null = null;
 
   try {
@@ -240,17 +239,6 @@ export async function ocrEmbeddedImages(buffer: Buffer, options?: OcrOptions): P
     if (worker) await worker.terminate();
   }
 
-  let searchablePdf: Uint8Array | undefined;
-  if (searchablePages.length) {
-    try {
-      searchablePdf = await buildSearchablePdf(searchablePages);
-    } catch (error) {
-      warnings.push(
-        `Built-in OCR text layer could not be generated: ${error instanceof Error ? error.message : 'unknown error'}.`
-      );
-    }
-  }
-
   if (tables.length) {
     warnings.push(
       `OCR fallback read ${tables.length} image-rendered page(s); these figures are machine-recognised and may be less precise than digital text.`
@@ -262,5 +250,5 @@ export async function ocrEmbeddedImages(buffer: Buffer, options?: OcrOptions): P
     words: page.words,
   }));
 
-  return { tables, warnings, used: true, imageCount: images.length, searchablePdf, sourcePages };
+  return { tables, warnings, used: true, imageCount: images.length, sourcePages };
 }
