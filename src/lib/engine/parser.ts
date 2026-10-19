@@ -215,6 +215,7 @@ export interface ParserOptions {
   applyUnitScaling?: boolean;
   minMatchConfidence?: number;
   ocr?: boolean;
+  onProgress?: (event: { stage: 'reading' | 'ocr-init' | 'ocr'; page?: number; total?: number }) => void;
 }
 
 export interface ParseInput {
@@ -2796,6 +2797,8 @@ export async function parseFinancialDocument(input: ParseInput): Promise<ParsedD
   const buffer = toBuffer(input.data);
   const format = detectFormat(buffer, input);
   const options = resolveOptions(input.options);
+  const progress = input.options?.onProgress;
+  progress?.({ stage: 'reading' });
 
   const tables = format === 'pdf' ? await extractPdfTables(buffer) : extractWorkbookTables(buffer, format);
   let document = buildParsedDocument(tables, options, {
@@ -2809,7 +2812,10 @@ export async function parseFinancialDocument(input: ParseInput): Promise<ParsedD
     const images = extractEmbeddedJpegs(buffer, OCR_MIN_IMAGE_BYTES, OCR_MAX_IMAGES);
     const scanned = images.length >= OCR_SCANNED_IMAGE_COUNT;
     if (scanned || shouldAttemptOcr(document)) {
-      const ocr = await ocrEmbeddedImages(buffer);
+      const ocr = await ocrEmbeddedImages(buffer, {
+        onProgress: (page, total) =>
+          progress?.(page === 0 ? { stage: 'ocr-init', total } : { stage: 'ocr', page, total }),
+      });
       if (ocr.tables.length) {
         const ocrDocument = buildParsedDocument(
           ocr.tables,

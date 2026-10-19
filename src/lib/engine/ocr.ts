@@ -52,6 +52,7 @@ export interface OcrResult {
 export interface OcrOptions {
   minImageBytes?: number;
   maxImages?: number;
+  onProgress?: (page: number, total: number) => void;
 }
 
 const DEFAULT_MIN_IMAGE_BYTES = 60_000;
@@ -223,10 +224,12 @@ export async function ocrEmbeddedImages(buffer: Buffer, options?: OcrOptions): P
   const searchablePages: { jpeg: Buffer; words: SearchableWord[] }[] = [];
   let worker: Awaited<ReturnType<typeof createWorker>> | null = null;
 
+  options?.onProgress?.(0, images.length);
   try {
     worker = await createWorker('eng', undefined, { cachePath: tmpdir() });
     await worker.setParameters({ preserve_interword_spaces: '1' });
     for (let index = 0; index < images.length; index += 1) {
+      options?.onProgress?.(index + 1, images.length);
       const { data } = await worker.recognize(images[index], {}, { text: true, blocks: true });
       const page = data as unknown as OcrPage;
       const table = pageToTable(page, `ocr image ${index + 1}`);

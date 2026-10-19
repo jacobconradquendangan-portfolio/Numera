@@ -17,6 +17,8 @@ import ExportMenu from './ExportMenu';
 import ReportDocument from './ReportDocument';
 import AlertBanner from './AlertBanner';
 import type { BannerItem } from './AlertBanner';
+import AnalysisProgress from './AnalysisProgress';
+import { AnalyzeStreamParser, type AnalyzeProgressStage } from '@/lib/analyze-stream';
 import WelcomeModal from './WelcomeModal';
 import type { ReportScope } from '@/lib/report';
 import type {
@@ -70,10 +72,31 @@ function decodeBase64(base64: string): Uint8Array {
   return bytes;
 }
 
+interface ProgressState {
+  stage: AnalyzeProgressStage;
+  page?: number;
+  total?: number;
+  startedAt: number;
+}
+
+const ANALYSIS_TIMEOUT_MS = 320_000;
+
+function analysisErrorMessage(response: Response, serverError?: string): string {
+  if (response.status === 413) {
+    return "This file is larger than the server's 4.5 MB upload limit. Try a smaller or statement-only PDF.";
+  }
+  if (response.status === 502 || response.status === 503 || response.status === 504) {
+    return 'The analysis timed out on the server. Scanned PDFs can take a while; try a smaller or statement-only PDF.';
+  }
+  if (serverError) return serverError;
+  return `The analysis service returned an unexpected response (${response.status}).`;
+}
+
 export default function AnalyzerApp() {
   const [result, setResult] = useState<AnalyzeSuccess | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<ProgressState | null>(null);
   const [mode, setMode] = useState<InputMode>('manual');
   const [selectedPeriod, setSelectedPeriod] = useState('');
   const [supplemental, setSupplemental] = useState<SupplementalForm>(EMPTY_SUPPLEMENTAL);
@@ -86,6 +109,7 @@ export default function AnalyzerApp() {
     issues: [],
   });
   const lastInputRef = useRef<LastInput | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const manualModel = useManualModel();
   const [parsedBaseline, setParsedBaseline] = useState<ParsedDocument | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -146,6 +170,8 @@ export default function AnalyzerApp() {
 
   useEffect(() => () => releasePdf(), [releasePdf]);
 
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   useEffect(() => {
     if (!printScope) return;
     const restore = () => setPrintScope(null);
@@ -163,52 +189,113 @@ export default function AnalyzerApp() {
     setManualValidation(validation);
   }, []);
 
+  const applySuccess = useCallback(
+    (payload: AnalyzeSuccess) => {
+      setResult(payload);
+      setSelectedPeriod(payload.ratios.period);
+      const parsedInput = lastInputRef.current?.kind === 'file' || lastInputRef.current?.kind === 'text';
+      if (parsedInput) {
+        setParsedBaseline(payload.document);
+        if (payload.document.sourcePages?.length) void loadSearchablePages(payload.document.sourcePages);
+        const statements = [
+          payload.document.statements.income,
+          payload.document.statements.balance,
+          payload.document.statements.cashflow,
+        ].filter((statement): statement is NormalizedStatement => statement !== null);
+        if (statements.length) manualModel.applySeed(statements);
+      }
+    },
+    [loadSearchablePages, manualModel]
+  );
+
   const submit = useCallback(
     async (body: FormData) => {
       setLoading(true);
       setError(null);
+      setProgress({ stage: 'uploading', startedAt: Date.now() });
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const timeout = window.setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
       for (const [key, value] of Object.entries(supplemental)) {
         if (value.trim() !== '') body.append(key, value.trim());
       }
       body.append('daysInYear', String(dayCountBasis));
       body.append('netIncomeBasis', netIncomeBasis);
+
+      const reportProgress = (event: { stage: AnalyzeProgressStage; page?: number; total?: number }) => {
+        setProgress((previous) => ({
+          stage: event.stage,
+          page: event.page,
+          total: event.total,
+          startedAt: previous?.startedAt ?? Date.now(),
+        }));
+      };
+
       try {
-        const response = await fetch('/api/analyze', { method: 'POST', body });
-        const contentType = response.headers.get('content-type') ?? '';
-        if (!contentType.includes('application/json')) {
-          throw new Error(
-            response.status >= 500
-              ? 'The analysis service hit a temporary error. Please try again.'
-              : `The analysis service returned an unexpected response (${response.status}).`
-          );
-        }
-        const payload = (await response.json()) as AnalyzeResponse;
-        if (!payload.ok) {
-          setError(payload.error);
-          setResult(null);
-        } else {
-          setResult(payload);
-          setSelectedPeriod(payload.ratios.period);
-          const parsedInput = lastInputRef.current?.kind === 'file' || lastInputRef.current?.kind === 'text';
-          if (parsedInput) {
-            setParsedBaseline(payload.document);
-            if (payload.document.sourcePages?.length) void loadSearchablePages(payload.document.sourcePages);
-            const statements = [
-              payload.document.statements.income,
-              payload.document.statements.balance,
-              payload.document.statements.cashflow,
-            ].filter((statement): statement is NormalizedStatement => statement !== null);
-            if (statements.length) manualModel.applySeed(statements);
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          body,
+          signal: controller.signal,
+          headers: { Accept: 'application/x-ndjson' },
+        });
+        if (!response.ok) {
+          let serverError: string | undefined;
+          const failureType = response.headers.get('content-type') ?? '';
+          if (failureType.includes('application/json')) {
+            const failure = (await response.json()) as AnalyzeResponse;
+            if (!failure.ok) serverError = failure.error;
           }
+          throw new Error(analysisErrorMessage(response, serverError));
         }
+
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/x-ndjson') || !response.body) {
+          const payload = (await response.json()) as AnalyzeResponse;
+          if (!payload.ok) throw new Error(payload.error);
+          applySuccess(payload);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        const parser = new AnalyzeStreamParser();
+        let payload: AnalyzeSuccess | null = null;
+        let streamError: string | null = null;
+        const handle = (events: ReturnType<AnalyzeStreamParser['push']>) => {
+          for (const event of events) {
+            if (event.type === 'progress') reportProgress(event);
+            else if (event.type === 'error') streamError = event.error;
+            else payload = event.payload;
+          }
+        };
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          handle(parser.push(decoder.decode(value, { stream: true })));
+        }
+        handle(parser.flush());
+
+        if (streamError) throw new Error(streamError);
+        if (!payload) {
+          throw new Error('The analysis stopped before it finished. The server may have timed out; please try again.');
+        }
+        applySuccess(payload);
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : 'Unexpected error contacting the analysis service.');
+        if (caught instanceof DOMException && caught.name === 'AbortError') {
+          setError('The analysis was cancelled or timed out. Please try again.');
+        } else {
+          setError(caught instanceof Error ? caught.message : 'Unexpected error contacting the analysis service.');
+        }
         setResult(null);
       } finally {
+        window.clearTimeout(timeout);
+        if (abortRef.current === controller) abortRef.current = null;
+        setProgress(null);
         setLoading(false);
       }
     },
-    [supplemental, dayCountBasis, netIncomeBasis, manualModel, loadSearchablePages]
+    [supplemental, dayCountBasis, netIncomeBasis, applySuccess]
   );
 
   const handleFile = useCallback(
@@ -499,10 +586,15 @@ export default function AnalyzerApp() {
       ) : null}
 
       {loading ? (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="shimmer h-24 rounded-2xl border border-line" />
-          ))}
+        <div className="mt-8 space-y-4">
+          {progress ? (
+            <AnalysisProgress progress={progress} onCancel={() => abortRef.current?.abort()} />
+          ) : null}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="shimmer h-24 rounded-2xl border border-line" />
+            ))}
+          </div>
         </div>
       ) : null}
 

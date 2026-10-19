@@ -8,6 +8,8 @@ import {
 } from '@/lib/engine/parser';
 import { analyzeDocument } from '@/lib/engine/analyzer';
 import { computeRatiosForDocument, computeRatiosForAllPeriods, SupplementalInputs, NumericSupplementalKey } from '@/lib/engine/ratios';
+import type { AnalyzeProgressStage, AnalyzeStreamEvent } from '@/lib/analyze-stream';
+import type { AnalyzeSuccess } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,6 +42,98 @@ function readSupplemental(form: FormData): SupplementalInputs {
   return supplemental;
 }
 
+interface PreparedAnalysis {
+  file: File | null;
+  text: string | null;
+  manual: ParseManualInput | null;
+  period?: string;
+  useAverageBalances: boolean;
+  daysInYear?: number;
+  supplemental: SupplementalInputs;
+}
+
+type ProgressEmitter = (event: { stage: AnalyzeProgressStage; page?: number; total?: number }) => void;
+
+async function runAnalysis(prepared: PreparedAnalysis, emit?: ProgressEmitter): Promise<AnalyzeSuccess> {
+  let document: ParsedDocument;
+  if (prepared.file) {
+    const uploaded = prepared.file;
+    const buffer = Buffer.from(await uploaded.arrayBuffer());
+    emit?.({ stage: 'reading' });
+    document = await parseFinancialDocument({
+      data: buffer,
+      filename: uploaded.name,
+      mimeType: uploaded.type || undefined,
+      options: {
+        onProgress: (event) => emit?.({ stage: event.stage, page: event.page, total: event.total }),
+      },
+    });
+  } else if (prepared.text) {
+    emit?.({ stage: 'reading' });
+    document = parseFinancialText({ text: prepared.text, filename: 'Pasted statement' });
+  } else {
+    emit?.({ stage: 'reading' });
+    document = parseManualDocument({ ...(prepared.manual as ParseManualInput), filename: 'Manual entry' });
+  }
+
+  emit?.({ stage: 'computing' });
+  const analysis = analyzeDocument(document);
+  const { period, supplemental, useAverageBalances, daysInYear } = prepared;
+  const ratios = computeRatiosForDocument(document, { period, supplemental, useAverageBalances, daysInYear });
+  const ratioHistory = computeRatiosForAllPeriods(document, { supplemental, useAverageBalances, daysInYear });
+
+  return { ok: true, document, analysis, ratios, ratioHistory };
+}
+
+function streamAnalysis(prepared: PreparedAnalysis): Response {
+  const encoder = new TextEncoder();
+  let closed = false;
+  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
+
+  const send = (event: AnalyzeStreamEvent) => {
+    if (closed || !controllerRef) return;
+    try {
+      controllerRef.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+    } catch {
+      closed = true;
+    }
+  };
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controllerRef = controller;
+    },
+    async pull(controller) {
+      controllerRef = controller;
+      try {
+        const payload = await runAnalysis(prepared, (event) => send({ type: 'progress', ...event }));
+        send({ type: 'result', payload });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to parse the uploaded document.';
+        send({ type: 'error', error: message });
+      } finally {
+        closed = true;
+        try {
+          controller.close();
+        } catch {
+          /* already closed by cancellation */
+        }
+      }
+    },
+    cancel() {
+      closed = true;
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-store, no-transform',
+      'X-Accel-Buffering': 'no',
+    },
+  });
+}
+
 export async function POST(request: Request) {
   let form: FormData;
   try {
@@ -68,34 +162,31 @@ export async function POST(request: Request) {
   const basisRaw = String(form.get('netIncomeBasis') ?? '');
   if (basisRaw === 'trailing' || basisRaw === 'period') supplemental.netIncomeBasis = basisRaw;
 
-  try {
-    let document: ParsedDocument;
-    if (hasFile) {
-      const uploaded = file as File;
-      const buffer = Buffer.from(await uploaded.arrayBuffer());
-      document = await parseFinancialDocument({
-        data: buffer,
-        filename: uploaded.name,
-        mimeType: uploaded.type || undefined,
-      });
-    } else if (hasText) {
-      document = parseFinancialText({ text: String(text), filename: 'Pasted statement' });
-    } else {
-      let manual: ParseManualInput;
-      try {
-        const parsed = JSON.parse(String(manualRaw));
-        manual = Array.isArray(parsed) ? { statements: parsed } : (parsed as ParseManualInput);
-      } catch {
-        return NextResponse.json({ ok: false, error: 'Manual entry payload was not valid JSON.' }, { status: 400 });
-      }
-      document = parseManualDocument({ ...manual, filename: 'Manual entry' });
+  let manual: ParseManualInput | null = null;
+  if (hasManual) {
+    try {
+      const parsed = JSON.parse(String(manualRaw));
+      manual = Array.isArray(parsed) ? { statements: parsed } : (parsed as ParseManualInput);
+    } catch {
+      return NextResponse.json({ ok: false, error: 'Manual entry payload was not valid JSON.' }, { status: 400 });
     }
+  }
 
-    const analysis = analyzeDocument(document);
-    const ratios = computeRatiosForDocument(document, { period, supplemental, useAverageBalances, daysInYear });
-    const ratioHistory = computeRatiosForAllPeriods(document, { supplemental, useAverageBalances, daysInYear });
+  const prepared: PreparedAnalysis = {
+    file: hasFile ? (file as File) : null,
+    text: hasText ? String(text) : null,
+    manual,
+    period,
+    useAverageBalances,
+    daysInYear,
+    supplemental,
+  };
 
-    return NextResponse.json({ ok: true, document, analysis, ratios, ratioHistory });
+  const wantsStream = (request.headers.get('accept') ?? '').includes('application/x-ndjson');
+  if (wantsStream) return streamAnalysis(prepared);
+
+  try {
+    return NextResponse.json(await runAnalysis(prepared));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to parse the uploaded document.';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
