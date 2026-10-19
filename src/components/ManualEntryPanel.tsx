@@ -30,6 +30,7 @@ interface Row {
   id: string;
   label: string;
   values: string[];
+  sourceLabel?: string;
 }
 
 let idSequence = 0;
@@ -61,9 +62,11 @@ export default function ManualEntryPanel({
   const seededFrom = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!seed || seededFrom.current === seed.source) return;
+    if (!seed || !categories.length) return;
+    if (seededFrom.current === seed.source) return;
     seededFrom.current = seed.source;
     setSeedSource(seed.source);
+    const labelByKey = new Map(categories.map((category) => [category.key, category.label] as const));
     const periodSet: string[] = [];
     for (const statement of seed.statements) {
       for (const period of statement.periods) {
@@ -75,14 +78,22 @@ export default function ManualEntryPanel({
       const statement = seed.statements.find((entry) => entry.type === type);
       if (!statement) return null;
       const rows = statement.lineItems
-        .map((item) => ({
-          id: nextId(),
-          label: item.rawLabel,
-          values: periodSet.map((period) => {
-            const value = item.values[period];
-            return value === null || value === undefined ? '' : String(value);
-          }),
-        }))
+        .map((item) => {
+          const canonical = item.category ? labelByKey.get(item.category) : undefined;
+          const label = canonical ?? item.rawLabel;
+          const differs =
+            canonical !== undefined &&
+            canonical.trim().toLowerCase() !== item.rawLabel.trim().toLowerCase();
+          return {
+            id: nextId(),
+            label,
+            sourceLabel: differs ? item.rawLabel : undefined,
+            values: periodSet.map((period) => {
+              const value = item.values[period];
+              return value === null || value === undefined ? '' : String(value);
+            }),
+          };
+        })
         .filter((row) => row.values.some((value) => value !== ''));
       return rows.length ? rows : null;
     };
@@ -93,7 +104,7 @@ export default function ManualEntryPanel({
     if (income) setIncomeRows(income);
     if (balance) setBalanceRows(balance);
     if (cashflow) setCashflowRows(cashflow);
-  }, [seed]);
+  }, [seed, categories]);
 
   useEffect(() => {
     let alive = true;
@@ -152,7 +163,9 @@ export default function ManualEntryPanel({
 
   const updateLabel = useCallback(
     (type: StatementType, id: string, value: string) => {
-      setterFor(type)((rows) => rows.map((row) => (row.id === id ? { ...row, label: value } : row)));
+      setterFor(type)((rows) =>
+        rows.map((row) => (row.id === id ? { ...row, label: value, sourceLabel: undefined } : row))
+      );
     },
     [setterFor]
   );
@@ -317,6 +330,14 @@ export default function ManualEntryPanel({
                     placeholder="Search line item…"
                     className={CELL}
                   />
+                  {row.sourceLabel ? (
+                    <span
+                      className="mt-1 block truncate font-mono text-[0.58rem] uppercase tracking-[0.1em] text-faint"
+                      title={row.sourceLabel}
+                    >
+                      from: {row.sourceLabel}
+                    </span>
+                  ) : null}
                 </td>
                 {periods.map((_, column) => (
                   <td key={column} className="w-32 py-1.5 pl-3">

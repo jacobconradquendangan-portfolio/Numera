@@ -79,7 +79,13 @@ export interface SupplementalInputs {
   ebit?: number;
   totalDebt?: number;
   cashAndEquivalents?: number;
+  volumeCurrent?: number;
+  volumePrior?: number;
+  netIncomeTrailing12Months?: number;
+  netIncomeBasis?: NetIncomeBasis;
 }
+
+export type NumericSupplementalKey = Exclude<keyof SupplementalInputs, 'netIncomeBasis'>;
 
 export interface RatioEngineInput {
   statements: {
@@ -91,6 +97,7 @@ export interface RatioEngineInput {
   supplemental?: SupplementalInputs;
   useAverageBalances?: boolean;
   daysInYear?: number;
+  annualNetIncome?: Record<string, { value: number; source: string }>;
 }
 
 export interface RatioEngineOptions {
@@ -116,6 +123,7 @@ interface RatioContext {
   supplemental: SupplementalInputs;
   useAverageBalances: boolean;
   daysInYear: number;
+  annualNetIncome: Record<string, { value: number; source: string }>;
   warnings: string[];
   labelFor: (category: FinancialCategory) => string;
   incomeValue: (category: FinancialCategory, period?: string) => number | null;
@@ -226,6 +234,21 @@ const RATIO_DESCRIPTIONS: Record<string, RatioDescription> = {
     interpretation: 'Higher means assets are funded more by liabilities than by owners, which magnifies both returns and losses.',
     benchmark: 'No universal target; a multiplier near 1.0 means assets are funded almost entirely by equity, and leverage norms differ widely by industry.',
   },
+  'asset-to-equity': {
+    measures: "The period-end amount of assets the company carries for each dollar of shareholders' equity.",
+    interpretation: 'Higher means a larger asset base per dollar of equity, i.e. more reliance on debt and other liabilities.',
+    benchmark: 'No universal target; compare against peers and the company\u2019s own history, and read it alongside the debt-to-equity ratio.',
+  },
+  'sales-growth': {
+    measures: 'The period-over-period percentage change in revenue.',
+    interpretation: 'Positive growth indicates expanding sales, while negative growth signals a contraction in top-line activity.',
+    benchmark: 'Highly industry-dependent; compare against the sector and the company\u2019s own long-term trend rather than a fixed number.',
+  },
+  'volume-growth': {
+    measures: 'The period-over-period percentage change in physical sales volume.',
+    interpretation: 'Positive growth means more units were sold, isolating volume effects from price and product-mix changes.',
+    benchmark: 'Not available from the financial statements alone; supply operational volume data and compare against peers.',
+  },
   'ar-turnover': {
     measures: 'How many times accounts receivable are collected during a period.',
     interpretation: 'Higher is better; it signals faster collection and efficient credit management.',
@@ -283,7 +306,11 @@ const RATIO_SOURCES: Record<string, RatioSource> = {
     url: `${CFI}/accounting/cash-ratio-formula`,
     note: 'CFI\u2019s cash ratio counts cash and cash equivalents only; this engine also includes short-term investments in the numerator.',
   },
-  'defensive-interval-ratio': { title: 'Defensive Interval Ratio \u2014 Definition & Formula', url: `${CFI}/accounting/defensive-interval-ratio` },
+  'defensive-interval-ratio': {
+    title: 'Defensive Interval Ratio \u2014 Definition & Formula',
+    url: `${CFI}/accounting/defensive-interval-ratio`,
+    note: 'CFI divides liquid assets by daily operational expenditure after deducting non-cash charges; this engine uses COGS + operating expenses without that adjustment because depreciation and amortization are not always broken out.',
+  },
   'times-interest-earned': { title: 'Interest Coverage Ratio (Times Interest Earned)', url: `${CFI}/commercial-lending/interest-coverage-ratio` },
   'tie-cash-basis': {
     title: 'Corporate Finance Ratios \u2014 Interest Coverage (Cash Basis)',
@@ -310,6 +337,13 @@ const RATIO_SOURCES: Record<string, RatioSource> = {
     note: 'Matches CFI\u2019s accounting-ratios definition using total liabilities; CFI\u2019s commercial-lending \u201cdebt to assets\u201d variant counts interest-bearing funded debt only.',
   },
   'financial-leverage': { title: 'Equity Multiplier \u2014 Guide, Examples & Financial Leverage Ratios', url: `${CFI}/valuation/equity-multiplier` },
+  'asset-to-equity': { title: 'Equity Multiplier \u2014 Guide, Examples & Financial Leverage Ratios', url: `${CFI}/valuation/equity-multiplier` },
+  'sales-growth': { title: 'Horizontal Analysis \u2014 Year-over-Year Change', url: `${CFI}/accounting/horizontal-analysis` },
+  'volume-growth': {
+    title: 'Horizontal Analysis \u2014 Year-over-Year Change',
+    url: `${CFI}/accounting/horizontal-analysis`,
+    note: 'Volume growth applies the horizontal-analysis percent-change formula to physical sales volume, which is not reported in the financial statements.',
+  },
   'ar-turnover': { title: 'Activity Ratios \u2014 Receivables Turnover = Revenue / Average Receivables', url: `${CFI}/accounting/activity-ratios/` },
   'ar-days': { title: 'Days Sales Outstanding (DSO) \u2014 Formula, Example & Definition', url: `${CFI}/accounting/days-sales-outstanding` },
   'asset-turnover': { title: 'Asset Turnover Ratio \u2014 Overview and How to Calculate', url: `${CFI}/accounting/asset-turnover-ratio` },
@@ -339,6 +373,10 @@ function toNumber(value: number | undefined): number | null {
 export const DAY_COUNT_BASES = [365, 360] as const;
 export type DayCountBasis = (typeof DAY_COUNT_BASES)[number];
 export const DEFAULT_DAYS_IN_YEAR: DayCountBasis = 365;
+
+export const NET_INCOME_BASES = ['period', 'trailing'] as const;
+export type NetIncomeBasis = (typeof NET_INCOME_BASES)[number];
+export const DEFAULT_NET_INCOME_BASIS: NetIncomeBasis = 'period';
 
 function resolveDaysInYear(value: number | undefined): DayCountBasis {
   return value === 360 ? 360 : 365;
@@ -414,6 +452,7 @@ function createContext(input: RatioEngineInput): RatioContext {
   const supplemental = input.supplemental ?? {};
   const useAverageBalances = input.useAverageBalances ?? true;
   const daysInYear = resolveDaysInYear(input.daysInYear);
+  const annualNetIncome = input.annualNetIncome ?? {};
   const warnings: string[] = [];
 
   const rawPeriods: string[] = [];
@@ -518,6 +557,7 @@ function createContext(input: RatioEngineInput): RatioContext {
     supplemental,
     useAverageBalances,
     daysInYear,
+    annualNetIncome,
     warnings,
     labelFor,
     incomeValue,
@@ -606,7 +646,7 @@ function ebit(ctx: RatioContext): { value: number | null; inputs: RatioInput[]; 
   const interest = ctx.incomeInput('interest_expense');
   if (pretax.value !== null && interest.value !== null) {
     return {
-      value: add(pretax.value, interest.value),
+      value: add(pretax.value, Math.abs(interest.value)),
       inputs: [pretax.input, interest.input],
       note: 'EBIT derived as Income Before Taxes + Interest Expense (operating income unavailable).',
     };
@@ -615,12 +655,39 @@ function ebit(ctx: RatioContext): { value: number | null; inputs: RatioInput[]; 
   const tax = ctx.incomeInput('income_tax_expense');
   if (net.value !== null && tax.value !== null && interest.value !== null) {
     return {
-      value: add(net.value, tax.value, interest.value),
+      value: add(net.value, Math.abs(tax.value), Math.abs(interest.value)),
       inputs: [net.input, tax.input, interest.input],
       note: 'EBIT derived as Net Income + Income Tax + Interest Expense.',
     };
   }
   return { value: null, inputs: [operatingIncome.input], note: 'EBIT could not be determined.' };
+}
+
+function operatingIncome(ctx: RatioContext): { value: number | null; inputs: RatioInput[]; note?: string } {
+  const line = ctx.incomeInput('operating_income');
+  if (line.value !== null) {
+    return { value: line.value, inputs: [line.input] };
+  }
+  const gross = ctx.incomeInput('gross_profit');
+  const sga = ctx.incomeInput('selling_general_and_administrative');
+  if (gross.value !== null && sga.value !== null) {
+    const rd = ctx.incomeInput('research_and_development');
+    const other = ctx.incomeInput('other_operating_income');
+    const sgaAbs = sga.value === null ? null : -Math.abs(sga.value);
+    const rdAbs = rd.value === null ? null : -Math.abs(rd.value);
+    const value = add(gross.value, sgaAbs, rdAbs, other.value);
+    if (value !== null) {
+      const inputs = [gross.input, sga.input];
+      if (rd.value !== null) inputs.push(rd.input);
+      if (other.value !== null) inputs.push(other.input);
+      return {
+        value,
+        inputs,
+        note: 'Operating Income line not reported; derived as Gross Profit \u2212 Operating Expenses + Other Operating Income.',
+      };
+    }
+  }
+  return ebit(ctx);
 }
 
 function ebitda(ctx: RatioContext): { value: number | null; inputs: RatioInput[]; note?: string } {
@@ -650,11 +717,12 @@ function totalDebt(ctx: RatioContext): { value: number | null; inputs: RatioInpu
     };
   }
   const shortTerm = ctx.balanceInput('short_term_debt');
+  const currentPortion = ctx.balanceInput('current_portion_of_long_term_debt');
   const longTerm = ctx.balanceInput('long_term_debt');
-  if (shortTerm.value !== null || longTerm.value !== null) {
+  if (shortTerm.value !== null || currentPortion.value !== null || longTerm.value !== null) {
     return {
-      value: add(shortTerm.value, longTerm.value),
-      inputs: [shortTerm.input, longTerm.input],
+      value: add(shortTerm.value, currentPortion.value, longTerm.value),
+      inputs: [shortTerm.input, currentPortion.input, longTerm.input],
       fallback: false,
     };
   }
@@ -667,7 +735,12 @@ function totalDebt(ctx: RatioContext): { value: number | null; inputs: RatioInpu
       note: 'Debt detail unavailable; fell back to Total Liabilities as a proxy for total debt.',
     };
   }
-  return { value: null, inputs: [shortTerm.input, longTerm.input], fallback: true, note: 'Total debt unavailable.' };
+  return {
+    value: null,
+    inputs: [shortTerm.input, currentPortion.input, longTerm.input],
+    fallback: true,
+    note: 'Total debt unavailable.',
+  };
 }
 
 function revenueInput(ctx: RatioContext): ResolvedValue {
@@ -857,7 +930,8 @@ function ratioDefensiveInterval(ctx: RatioContext): RatioResult {
 function ratioTie(ctx: RatioContext): RatioResult {
   const ebitResult = ebit(ctx);
   const interest = ctx.incomeInput('interest_expense');
-  const { value, note } = divide(ebitResult.value, interest.value);
+  const interestValue = interest.value === null ? null : Math.abs(interest.value);
+  const { value, note } = divide(ebitResult.value, interestValue);
   const notes: string[] = [];
   if (ebitResult.note) notes.push(ebitResult.note);
   if (note) notes.push(note);
@@ -872,13 +946,13 @@ function ratioTie(ctx: RatioContext): RatioResult {
     },
     {
       value,
-      substitution: `${formatNumber(ebitResult.value)} (EBIT) / ${formatNumber(interest.value)} (Interest Expense)`,
+      substitution: `${formatNumber(ebitResult.value)} (EBIT) / ${formatNumber(interestValue)} (Interest Expense)`,
       steps: [
         { label: 'EBIT', expression: formatNumber(ebitResult.value), value: ebitResult.value, unit: 'currency' },
-        { label: 'Interest Expense', expression: formatNumber(interest.value), value: interest.value, unit: 'currency' },
+        { label: 'Interest Expense', expression: formatNumber(interestValue), value: interestValue, unit: 'currency' },
         {
           label: 'Times Interest Earned',
-          expression: `${formatNumber(ebitResult.value)} / ${formatNumber(interest.value)}`,
+          expression: `${formatNumber(ebitResult.value)} / ${formatNumber(interestValue)}`,
           value,
           unit: 'times',
         },
@@ -893,8 +967,9 @@ function ratioTieCashBasis(ctx: RatioContext): RatioResult {
   const ebitResult = ebit(ctx);
   const da = ctx.incomeInput('depreciation_and_amortization');
   const interest = ctx.incomeInput('interest_expense');
+  const interestValue = interest.value === null ? null : Math.abs(interest.value);
   const ebitdaValue = add(ebitResult.value, da.value);
-  const { value, note } = divide(ebitdaValue, interest.value);
+  const { value, note } = divide(ebitdaValue, interestValue);
   const notes: string[] = [];
   if (ebitResult.note) notes.push(ebitResult.note);
   if (note) notes.push(note);
@@ -911,7 +986,7 @@ function ratioTieCashBasis(ctx: RatioContext): RatioResult {
       value,
       substitution:
         `(${formatNumber(ebitResult.value)} (EBIT) + ${formatNumber(da.value)} (D&A)) / ` +
-        `${formatNumber(interest.value)} (Interest Expense)`,
+        `${formatNumber(interestValue)} (Interest Expense)`,
       steps: [
         { label: 'EBIT', expression: formatNumber(ebitResult.value), value: ebitResult.value, unit: 'currency' },
         {
@@ -920,10 +995,10 @@ function ratioTieCashBasis(ctx: RatioContext): RatioResult {
           value: ebitdaValue,
           unit: 'currency',
         },
-        { label: 'Interest Expense', expression: formatNumber(interest.value), value: interest.value, unit: 'currency' },
+        { label: 'Interest Expense', expression: formatNumber(interestValue), value: interestValue, unit: 'currency' },
         {
           label: 'TIE-CB',
-          expression: `${formatNumber(ebitdaValue)} / ${formatNumber(interest.value)}`,
+          expression: `${formatNumber(ebitdaValue)} / ${formatNumber(interestValue)}`,
           value,
           unit: 'times',
         },
@@ -938,7 +1013,7 @@ function preferredCashflowInput(
   ctx: RatioContext,
   category: FinancialCategory,
   label: string,
-  supplementalKey: keyof SupplementalInputs
+  supplementalKey: NumericSupplementalKey
 ): RatioInput {
   const fromStatement = ctx.cashflowValue(category);
   if (fromStatement !== null) {
@@ -1029,12 +1104,67 @@ function ratioOperatingCashFlow(ctx: RatioContext): RatioResult {
   );
 }
 
+function fiscalYearOf(period: string): string | null {
+  const match = /(19|20)\d{2}/.exec(period);
+  return match ? match[0] : null;
+}
+
+function trailingTwelveMonthNetIncome(ctx: RatioContext): ResolvedValue & { trailing: boolean; note?: string } {
+  if (ctx.supplemental.netIncomeBasis !== 'trailing') {
+    return { ...ctx.incomeInput('net_income'), trailing: false };
+  }
+
+  const override = toNumber(ctx.supplemental.netIncomeTrailing12Months);
+  if (override !== null) {
+    return {
+      value: override,
+      input: ctx.external(
+        'netIncomeTrailing12Months',
+        'Net Income (trailing 12 months)',
+        ctx.supplemental.netIncomeTrailing12Months,
+        `${INCOME_SOURCE} (supplied trailing 12 months)`
+      ),
+      fallback: false,
+      trailing: true,
+    };
+  }
+
+  const current = ctx.incomeValue('net_income');
+  const prior = ctx.priorPeriod ? ctx.incomeValue('net_income', ctx.priorPeriod) : null;
+  const priorYear = ctx.priorPeriod ? fiscalYearOf(ctx.priorPeriod) : null;
+  const annual = priorYear ? ctx.annualNetIncome[priorYear] : undefined;
+
+  if (current !== null && prior !== null && annual && ctx.priorPeriod) {
+    const ttm = round(annual.value + current - prior);
+    return {
+      value: ttm,
+      input: ctx.external(
+        'netIncomeTrailing12Months',
+        'Net Income (trailing 12 months)',
+        ttm,
+        `Trailing 12 months = FY${priorYear} ${formatNumber(annual.value)} + ${ctx.period} ${formatNumber(current)} \u2212 ${ctx.priorPeriod} ${formatNumber(prior)} (${annual.source})`
+      ),
+      fallback: false,
+      trailing: true,
+    };
+  }
+
+  return {
+    ...ctx.incomeInput('net_income'),
+    trailing: false,
+    note:
+      'Trailing-12-month net income could not be derived from the document and no manual override was supplied; reported period net income was used instead.',
+  };
+}
+
 function ratioRoe(ctx: RatioContext): RatioResult {
-  const netIncome = ctx.incomeInput('net_income');
+  const netIncome = trailingTwelveMonthNetIncome(ctx);
   const equity = ctx.averageBalance('total_equity');
   const { value: fraction, note } = divide(netIncome.value, equity.value);
   const value = percentResult(fraction);
   const notes: string[] = [];
+  if (netIncome.trailing) notes.push('Returns use the supplied trailing-12-month net income.');
+  if (netIncome.note) notes.push(netIncome.note);
   if (equity.fallback) notes.push(`Average equity unavailable; fell back to period-end equity (${equity.input.source}).`);
   if (note) notes.push(note);
   return makeResult(
@@ -1073,11 +1203,13 @@ function ratioRoe(ctx: RatioContext): RatioResult {
 }
 
 function ratioRoa(ctx: RatioContext): RatioResult {
-  const netIncome = ctx.incomeInput('net_income');
+  const netIncome = trailingTwelveMonthNetIncome(ctx);
   const assets = ctx.averageBalance('total_assets');
   const { value: fraction, note } = divide(netIncome.value, assets.value);
   const value = percentResult(fraction);
   const notes: string[] = [];
+  if (netIncome.trailing) notes.push('Returns use the supplied trailing-12-month net income.');
+  if (netIncome.note) notes.push(netIncome.note);
   if (assets.fallback) notes.push(`Average assets unavailable; fell back to period-end assets (${assets.input.source}).`);
   if (note) notes.push(note);
   return makeResult(
@@ -1228,20 +1360,20 @@ function ratioGrossMargin(ctx: RatioContext): RatioResult {
 }
 
 function ratioOperatingMargin(ctx: RatioContext): RatioResult {
-  const ebitResult = ebit(ctx);
+  const operating = operatingIncome(ctx);
   const resolved: ResolvedValue = {
-    value: ebitResult.value,
-    input: valueInput('operating_income', 'EBIT / Operating Income', ebitResult.value, 'currency', INCOME_SOURCE, ctx.period),
+    value: operating.value,
+    input: valueInput('operating_income', 'Operating Income', operating.value, 'currency', INCOME_SOURCE, ctx.period),
     fallback: false,
   };
   return marginResult(
     ctx,
     'operating-margin',
     'Operating Margin',
-    'Operating Income (EBIT)',
+    'Operating Income',
     resolved,
-    ebitResult.inputs,
-    ebitResult.note ? [ebitResult.note] : []
+    operating.inputs,
+    operating.note ? [operating.note] : []
   );
 }
 
@@ -1401,6 +1533,122 @@ function ratioFinancialLeverage(ctx: RatioContext): RatioResult {
     }
   );
 }
+
+function ratioAssetToEquity(ctx: RatioContext): RatioResult {
+  const assets = ctx.balanceInput('total_assets');
+  const equity = ctx.balanceInput('total_equity');
+  const { value, note } = divide(assets.value, equity.value);
+  return makeResult(
+    ctx.period,
+    {
+      id: 'asset-to-equity',
+      name: 'Asset-to-Equity Ratio',
+      category: 'leverage',
+      unit: 'times',
+      formula: 'Asset-to-Equity = Total Assets / Total Equity',
+    },
+    {
+      value,
+      substitution: `${formatNumber(assets.value)} (Total Assets) / ${formatNumber(equity.value)} (Total Equity)`,
+      steps: [
+        { label: 'Total Assets', expression: formatNumber(assets.value), value: assets.value, unit: 'currency' },
+        { label: 'Total Equity', expression: formatNumber(equity.value), value: equity.value, unit: 'currency' },
+        {
+          label: 'Asset-to-Equity',
+          expression: `${formatNumber(assets.value)} / ${formatNumber(equity.value)}`,
+          value,
+          unit: 'times',
+        },
+      ],
+      inputs: [assets.input, equity.input],
+      notes: note ? [note] : [],
+    }
+  );
+}
+
+function ratioSalesGrowth(ctx: RatioContext): RatioResult {
+  const current = ctx.incomeInput('revenue');
+  const prior = ctx.priorPeriod ? ctx.incomeValue('revenue', ctx.priorPeriod) : null;
+  const priorInput = valueInput('revenue', 'Revenue (prior period)', prior, 'currency', INCOME_SOURCE, ctx.priorPeriod);
+  const change = current.value === null || prior === null ? null : current.value - prior;
+  const { value: fraction, note } = divide(change, prior);
+  const value = percentResult(fraction);
+  const notes: string[] = [];
+  if (prior === null) notes.push('A prior period is required to compute growth; no earlier period was available.');
+  if (note) notes.push(note);
+  return makeResult(
+    ctx.period,
+    {
+      id: 'sales-growth',
+      name: 'Sales Growth',
+      category: 'efficiency',
+      unit: 'percent',
+      formula: 'Sales Growth = (Current Period Revenue \u2212 Prior Period Revenue) / Prior Period Revenue',
+    },
+    {
+      value,
+      substitution: `(${formatNumber(current.value)} (Current Revenue) \u2212 ${formatNumber(prior)} (Prior Revenue)) / ${formatNumber(prior)} (Prior Revenue)`,
+      steps: [
+        { label: 'Current Period Revenue', expression: formatNumber(current.value), value: current.value, unit: 'currency' },
+        { label: 'Prior Period Revenue', expression: formatNumber(prior), value: prior, unit: 'currency' },
+        {
+          label: 'Growth (fraction)',
+          expression: `${formatNumber(change)} / ${formatNumber(prior)}`,
+          value: fraction,
+          unit: 'ratio',
+        },
+        { label: 'Sales Growth', expression: formatForUnit(value, 'percent'), value, unit: 'percent' },
+      ],
+      inputs: [current.input, priorInput],
+      notes,
+    }
+  );
+}
+
+function ratioVolumeGrowth(ctx: RatioContext): RatioResult {
+  const current = toNumber(ctx.supplemental.volumeCurrent);
+  const prior = toNumber(ctx.supplemental.volumePrior);
+  const currentInput = ctx.external('volumeCurrent', 'Current Period Volume', ctx.supplemental.volumeCurrent);
+  const priorInput = ctx.external('volumePrior', 'Prior Period Volume', ctx.supplemental.volumePrior);
+  const change = current === null || prior === null ? null : current - prior;
+  const { value: fraction, note } = divide(change, prior);
+  const value = percentResult(fraction);
+  const notes: string[] = [];
+  if (current === null || prior === null) {
+    notes.push(
+      'Volume (physical quantity sold) is not disclosed in financial statements; supply current and prior period volume to compute growth.'
+    );
+  }
+  if (note) notes.push(note);
+  return makeResult(
+    ctx.period,
+    {
+      id: 'volume-growth',
+      name: 'Volume Growth',
+      category: 'efficiency',
+      unit: 'percent',
+      formula: 'Volume Growth = (Current Period Volume \u2212 Prior Period Volume) / Prior Period Volume',
+    },
+    {
+      value,
+      substitution: `(${formatNumber(current)} (Current Volume) \u2212 ${formatNumber(prior)} (Prior Volume)) / ${formatNumber(prior)} (Prior Volume)`,
+      steps: [
+        { label: 'Current Period Volume', expression: formatNumber(current), value: current, unit: 'currency' },
+        { label: 'Prior Period Volume', expression: formatNumber(prior), value: prior, unit: 'currency' },
+        {
+          label: 'Growth (fraction)',
+          expression: `${formatNumber(change)} / ${formatNumber(prior)}`,
+          value: fraction,
+          unit: 'ratio',
+        },
+        { label: 'Volume Growth', expression: formatForUnit(value, 'percent'), value, unit: 'percent' },
+      ],
+      inputs: [currentInput, priorInput],
+      notes,
+    }
+  );
+}
+
 
 function turnoverResult(
   ctx: RatioContext,
@@ -1691,7 +1939,8 @@ export function computeFinancialRatios(input: RatioEngineInput): RatioReport {
     ratioDebtToEquity(ctx),
     ratioEquityRatio(ctx),
     ratioDebtRatio(ctx),
-    ratioFinancialLeverage(ctx)
+    ratioFinancialLeverage(ctx),
+    ratioAssetToEquity(ctx)
   );
 
   const arTurnover = ratioArTurnover(ctx);
@@ -1707,6 +1956,8 @@ export function computeFinancialRatios(input: RatioEngineInput): RatioReport {
     inventoryTurnover,
     daysResult(ctx, 'inventory-days', 'Inventory Days', inventoryTurnover, 'Inventory Turnover')
   );
+
+  ratios.push(ratioSalesGrowth(ctx), ratioVolumeGrowth(ctx));
 
   ratios.push(
     ratioPe(ctx),
@@ -1757,6 +2008,7 @@ export function computeRatiosForDocument(
     supplemental: options?.supplemental,
     useAverageBalances: options?.useAverageBalances,
     daysInYear: options?.daysInYear,
+    annualNetIncome: document.annualNetIncome,
   });
 }
 
@@ -1780,6 +2032,7 @@ export function computeRatiosForAllPeriods(
       supplemental: options?.supplemental,
       useAverageBalances: options?.useAverageBalances,
       daysInYear: options?.daysInYear,
+      annualNetIncome: document.annualNetIncome,
     })
   );
 }

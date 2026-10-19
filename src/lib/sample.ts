@@ -64,4 +64,7 @@ export const SAMPLE_SUPPLEMENTAL: SupplementalForm = {
   ebit: '260000',
   totalDebt: '260000',
   cashAndEquivalents: '200000',
+  netIncomeTrailing12Months: '',
+  volumeCurrent: '',
+  volumePrior: '',
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import type { DayCountBasis, SupplementalForm } from '@/lib/types';
+import type { DayCountBasis, NetIncomeBasis, SupplementalForm } from '@/lib/types';
 import { cx } from '@/lib/format';
 
 interface SupplementalPanelProps {
@@ -11,11 +11,18 @@ interface SupplementalPanelProps {
   busy: boolean;
   dayCountBasis: DayCountBasis;
   onDayCountBasisChange: (value: DayCountBasis) => void;
+  netIncomeBasis: NetIncomeBasis;
+  onNetIncomeBasisChange: (value: NetIncomeBasis) => void;
 }
 
 const DAY_COUNT_OPTIONS: DayCountBasis[] = [365, 360];
 
-const FIELDS: { key: keyof SupplementalForm; label: string; group: string; hint: string }[] = [
+const RETURN_BASIS_OPTIONS: { id: NetIncomeBasis; label: string }[] = [
+  { id: 'period', label: 'Reported period' },
+  { id: 'trailing', label: 'Trailing 12-mo' },
+];
+
+const FIELDS: { key: keyof SupplementalForm; label: string; group: string; hint: string; tip?: string }[] = [
   { key: 'sharePrice', label: 'Share Price', group: 'Per Share', hint: 'e.g. 25.40' },
   { key: 'sharesOutstanding', label: 'Shares Outstanding', group: 'Per Share', hint: 'e.g. 1,200,000' },
   { key: 'earningsPerShare', label: 'EPS (override)', group: 'Per Share', hint: 'optional' },
@@ -25,9 +32,18 @@ const FIELDS: { key: keyof SupplementalForm; label: string; group: string; hint:
   { key: 'cashAndEquivalents', label: 'Cash (override)', group: 'Debt & Cash', hint: 'optional' },
   { key: 'ebitda', label: 'EBITDA (override)', group: 'Profitability Overrides', hint: 'optional' },
   { key: 'ebit', label: 'EBIT (override)', group: 'Profitability Overrides', hint: 'optional' },
+  {
+    key: 'netIncomeTrailing12Months',
+    label: 'Trailing 12-Mo Net Income',
+    group: 'Profitability Overrides',
+    hint: 'e.g. 1,250,000',
+    tip: 'Net income for the last 12 months = latest full-year (FY) net income + current year-to-date (YTD) − prior-year same-period YTD. Only used when Return basis is set to "Trailing 12-mo".',
+  },
+  { key: 'volumeCurrent', label: 'Current Period Volume', group: 'Operating Volume', hint: 'optional' },
+  { key: 'volumePrior', label: 'Prior Period Volume', group: 'Operating Volume', hint: 'optional' },
 ];
 
-const GROUPS = ['Per Share', 'Valuation', 'Debt & Cash', 'Profitability Overrides'];
+const GROUPS = ['Per Share', 'Valuation', 'Debt & Cash', 'Profitability Overrides', 'Operating Volume'];
 
 export default function SupplementalPanel({
   values,
@@ -37,8 +53,10 @@ export default function SupplementalPanel({
   busy,
   dayCountBasis,
   onDayCountBasisChange,
+  netIncomeBasis,
+  onNetIncomeBasisChange,
 }: SupplementalPanelProps) {
-  const hasAnyValue = FIELDS.some((field) => values[field.key].trim() !== '');
+  const hasAnyValue = FIELDS.some((field) => (values[field.key] ?? '').trim() !== '');
   const clearAll = () => FIELDS.forEach((field) => onChange(field.key, ''));
 
   return (
@@ -84,6 +102,32 @@ export default function SupplementalPanel({
             ))}
           </div>
         </div>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-ink/40 px-4 py-3">
+          <div className="min-w-0">
+            <p className="rule-label">Return basis</p>
+            <p className="mt-0.5 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-faint">
+              Net income used for ROE and ROA
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 rounded-full border border-line2 p-1">
+            {RETURN_BASIS_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onNetIncomeBasisChange(option.id)}
+                aria-pressed={netIncomeBasis === option.id}
+                className={cx(
+                  'rounded-full px-4 py-1.5 font-mono text-[0.68rem] uppercase tracking-[0.16em] transition',
+                  netIncomeBasis === option.id
+                    ? 'bg-accent/15 text-accent'
+                    : 'text-muted hover:text-paper'
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {GROUPS.map((group) => (
             <div key={group} className="space-y-3">
@@ -97,13 +141,16 @@ export default function SupplementalPanel({
                     <input
                       inputMode="decimal"
                       placeholder={field.hint}
-                      value={values[field.key]}
+                      value={values[field.key] ?? ''}
                       onChange={(event) => onChange(field.key, event.target.value)}
                       className={cx(
                         'tabular w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm text-paper',
                         'placeholder:text-faint/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40'
                       )}
                     />
+                    {field.tip ? (
+                      <span className="mt-1 block text-[0.68rem] leading-snug text-faint/80">{field.tip}</span>
+                    ) : null}
                   </label>
                 ))}
               </div>

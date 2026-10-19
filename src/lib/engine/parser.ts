@@ -49,11 +49,13 @@ export type FinancialCategory =
   | 'property_plant_and_equipment'
   | 'intangible_assets'
   | 'goodwill'
+  | 'deferred_tax_assets'
   | 'long_term_investments'
   | 'other_non_current_assets'
   | 'total_assets'
   | 'accounts_payable'
   | 'short_term_debt'
+  | 'current_portion_of_long_term_debt'
   | 'accrued_liabilities'
   | 'deferred_revenue'
   | 'other_current_liabilities'
@@ -73,7 +75,25 @@ export type FinancialCategory =
   | 'net_cash_from_financing_activities'
   | 'capital_expenditures'
   | 'dividends_paid'
-  | 'net_change_in_cash';
+  | 'net_change_in_cash'
+  | 'other_operating_income'
+  | 'share_in_associate_and_joint_ventures'
+  | 'net_income_attributable_to_parent'
+  | 'net_income_attributable_to_noncontrolling_interests'
+  | 'investment_in_associates'
+  | 'right_of_use_assets'
+  | 'investment_property'
+  | 'total_non_current_assets'
+  | 'crude_oil_and_petroleum_product_liabilities'
+  | 'derivative_liabilities'
+  | 'income_tax_payable'
+  | 'current_lease_liability'
+  | 'non_current_lease_liability'
+  | 'asset_retirement_obligation'
+  | 'total_non_current_liabilities'
+  | 'capital_securities'
+  | 'equity_reserves'
+  | 'equity_attributable_to_parent';
 
 export type DocumentFormat = 'pdf' | 'xlsx' | 'csv' | 'text' | 'manual';
 
@@ -126,6 +146,11 @@ export interface BalanceSheetValidation {
   message: string;
 }
 
+export interface AnnualNetIncomeReference {
+  value: number;
+  source: string;
+}
+
 export interface ParsedDocument {
   source: {
     filename?: string;
@@ -139,6 +164,7 @@ export interface ParsedDocument {
   };
   validations: BalanceSheetValidation[];
   warnings: string[];
+  annualNetIncome?: Record<string, AnnualNetIncomeReference>;
 }
 
 export interface ParserOptions {
@@ -147,6 +173,7 @@ export interface ParserOptions {
   relTolerance?: number;
   applyUnitScaling?: boolean;
   minMatchConfidence?: number;
+  ocr?: boolean;
 }
 
 export interface ParseInput {
@@ -162,11 +189,13 @@ interface ResolvedOptions {
   relTolerance: number;
   applyUnitScaling: boolean;
   minMatchConfidence: number;
+  ocr: boolean;
 }
 
-interface RawTable {
+export interface RawTable {
   name: string;
   rows: string[][];
+  periods?: string[];
 }
 
 interface NumericEntry {
@@ -199,6 +228,7 @@ const DEFAULT_OPTIONS: ResolvedOptions = {
   relTolerance: 0.005,
   applyUnitScaling: true,
   minMatchConfidence: 0.6,
+  ocr: true,
 };
 
 const TAXONOMY: CategoryDefinition[] = [
@@ -270,6 +300,9 @@ const TAXONOMY: CategoryDefinition[] = [
       'selling general and administrative',
       'selling general administrative',
       'selling general and administrative expenses',
+      'selling and administrative',
+      'selling and administrative expense',
+      'selling and administrative expenses',
       'sga',
       'sg&a',
       'sg and a',
@@ -322,6 +355,13 @@ const TAXONOMY: CategoryDefinition[] = [
     total: true,
   },
   {
+    key: 'other_operating_income',
+    statement: 'income',
+    section: 'other_income',
+    label: 'Other Operating Income',
+    synonyms: ['other operating income', 'other operating income net', 'miscellaneous operating income'],
+  },
+  {
     key: 'interest_expense',
     statement: 'income',
     section: 'expense',
@@ -339,6 +379,22 @@ const TAXONOMY: CategoryDefinition[] = [
     section: 'other_income',
     label: 'Interest Income',
     synonyms: ['interest income', 'interest and other income', 'investment income'],
+  },
+  {
+    key: 'share_in_associate_and_joint_ventures',
+    statement: 'income',
+    section: 'other_income',
+    label: 'Share in Net Income of Associates and Joint Ventures',
+    synonyms: [
+      'share in net income of an associate and joint ventures',
+      'share in net income of associate and joint ventures',
+      'share in net income of associates and joint ventures',
+      'share in net income of associates',
+      'share in net income of joint ventures',
+      'equity in earnings of associates',
+      'share of profit of associates',
+      'income from associates',
+    ],
   },
   {
     key: 'other_income_expense',
@@ -361,6 +417,7 @@ const TAXONOMY: CategoryDefinition[] = [
     label: 'Income Before Income Taxes',
     synonyms: [
       'income before income taxes',
+      'income before income tax',
       'income before taxes',
       'income loss before income taxes',
       'pretax income',
@@ -400,6 +457,31 @@ const TAXONOMY: CategoryDefinition[] = [
     total: true,
   },
   {
+    key: 'net_income_attributable_to_parent',
+    statement: 'income',
+    section: 'other_income',
+    label: 'Net Income Attributable to Equity Holders of the Parent',
+    synonyms: [
+      'attributable to equity holders of the parent company',
+      'attributable to equity holders of the parent',
+      'net income attributable to equity holders of the parent',
+      'net income attributable to parent',
+      'attributable to owners of the parent',
+    ],
+  },
+  {
+    key: 'net_income_attributable_to_noncontrolling_interests',
+    statement: 'income',
+    section: 'other_income',
+    label: 'Net Income Attributable to Non-controlling Interests',
+    synonyms: [
+      'attributable to non controlling interests',
+      'attributable to noncontrolling interests',
+      'net income attributable to non controlling interests',
+      'net income attributable to minority interests',
+    ],
+  },
+  {
     key: 'ebitda',
     statement: 'income',
     section: 'other_income',
@@ -430,6 +512,9 @@ const TAXONOMY: CategoryDefinition[] = [
       'marketable securities',
       'short term investments and marketable securities',
       'short term marketable securities',
+      'financial assets at fair value',
+      'financial assets at fair value through profit or loss',
+      'financial assets at fair value through other comprehensive income',
     ],
   },
   {
@@ -443,6 +528,7 @@ const TAXONOMY: CategoryDefinition[] = [
       'accounts receivable trade',
       'trade receivables',
       'trade and other receivables',
+      'trade and other receivables net',
       'receivables',
       'receivables net',
     ],
@@ -521,7 +607,20 @@ const TAXONOMY: CategoryDefinition[] = [
     statement: 'balance',
     section: 'non_current_assets',
     label: 'Goodwill',
-    synonyms: ['goodwill'],
+    synonyms: ['goodwill', 'goodwill net', 'goodwill net of impairment'],
+  },
+  {
+    key: 'deferred_tax_assets',
+    statement: 'balance',
+    section: 'non_current_assets',
+    label: 'Deferred Tax Assets',
+    synonyms: [
+      'deferred tax assets',
+      'deferred tax asset',
+      'deferred tax assets net',
+      'deferred tax asset net',
+      'deferred income tax assets',
+    ],
   },
   {
     key: 'long_term_investments',
@@ -529,6 +628,41 @@ const TAXONOMY: CategoryDefinition[] = [
     section: 'non_current_assets',
     label: 'Long-Term Investments',
     synonyms: ['long term investments', 'long term investment', 'long term marketable securities'],
+  },
+  {
+    key: 'investment_in_associates',
+    statement: 'balance',
+    section: 'non_current_assets',
+    label: 'Investment in Associates and Joint Ventures',
+    synonyms: [
+      'investment in shares of stock of an associate and joint ventures',
+      'investment in shares of stock of an associate and joint venture',
+      'investment in associates and joint ventures',
+      'investment in associates',
+      'investment in joint ventures',
+      'investments in associates and joint ventures',
+    ],
+  },
+  {
+    key: 'right_of_use_assets',
+    statement: 'balance',
+    section: 'non_current_assets',
+    label: 'Right-of-Use Assets',
+    synonyms: [
+      'right of use assets',
+      'right of use asset',
+      'right of use net',
+      'right of use asset net',
+      'operating lease right of use assets',
+      'lease right of use assets',
+    ],
+  },
+  {
+    key: 'investment_property',
+    statement: 'balance',
+    section: 'non_current_assets',
+    label: 'Investment Property',
+    synonyms: ['investment property', 'investment property net', 'investment properties'],
   },
   {
     key: 'other_non_current_assets',
@@ -542,8 +676,15 @@ const TAXONOMY: CategoryDefinition[] = [
       'other assets',
       'other long term assets',
       'deferred tax assets',
-      'operating lease right of use assets',
     ],
+  },
+  {
+    key: 'total_non_current_assets',
+    statement: 'balance',
+    section: 'non_current_assets',
+    label: 'Total Non-Current Assets',
+    synonyms: ['total non current assets', 'total noncurrent assets', 'non current assets', 'noncurrent assets'],
+    total: true,
   },
   {
     key: 'total_assets',
@@ -574,11 +715,26 @@ const TAXONOMY: CategoryDefinition[] = [
     synonyms: [
       'short term debt',
       'short term borrowings',
+      'short term loans',
+      'short term loan',
+      'short term loans payable',
+      'loans payable',
       'short term debt and current portion of long term debt',
-      'current portion of long term debt',
-      'current portion of long term debt and notes payable',
       'notes payable',
       'short term borrowings and current portion of long term debt',
+    ],
+  },
+  {
+    key: 'current_portion_of_long_term_debt',
+    statement: 'balance',
+    section: 'current_liabilities',
+    label: 'Current Portion of Long-Term Debt',
+    synonyms: [
+      'current portion of long term debt',
+      'current portion of long term debt net',
+      'current portion of long term debt and notes payable',
+      'current portion of long term borrowings',
+      'current portion of long term loans',
     ],
   },
   {
@@ -613,6 +769,44 @@ const TAXONOMY: CategoryDefinition[] = [
     ],
   },
   {
+    key: 'crude_oil_and_petroleum_product_liabilities',
+    statement: 'balance',
+    section: 'current_liabilities',
+    label: 'Liabilities for Crude Oil and Petroleum Products',
+    synonyms: [
+      'liabilities for crude oil and petroleum products',
+      'liabilities for crude oil and petroleum product',
+      'crude oil and petroleum product liabilities',
+    ],
+  },
+  {
+    key: 'derivative_liabilities',
+    statement: 'balance',
+    section: 'current_liabilities',
+    label: 'Derivative Liabilities',
+    synonyms: ['derivative liabilities', 'derivative liability', 'derivatives liabilities'],
+  },
+  {
+    key: 'income_tax_payable',
+    statement: 'balance',
+    section: 'current_liabilities',
+    label: 'Income Tax Payable',
+    synonyms: ['income tax payable', 'taxes payable', 'current tax payable'],
+  },
+  {
+    key: 'current_lease_liability',
+    statement: 'balance',
+    section: 'current_liabilities',
+    label: 'Current Portion of Lease Liabilities',
+    synonyms: [
+      'current portion of lease liability',
+      'current portion of lease liabilities',
+      'current lease liability',
+      'current lease liabilities',
+      'lease liability current',
+    ],
+  },
+  {
     key: 'total_current_liabilities',
     statement: 'balance',
     section: 'current_liabilities',
@@ -642,11 +836,40 @@ const TAXONOMY: CategoryDefinition[] = [
     synonyms: [
       'other non current liabilities',
       'other long term liabilities',
-      'non current liabilities',
       'deferred tax liabilities',
       'operating lease liabilities',
       'pension obligations',
+      'retirement benefits liability',
+      'retirement benefits liability net',
+      'pension liability',
     ],
+  },
+  {
+    key: 'non_current_lease_liability',
+    statement: 'balance',
+    section: 'non_current_liabilities',
+    label: 'Non-Current Lease Liabilities',
+    synonyms: [
+      'lease liability net of current portion',
+      'non current lease liability',
+      'non current lease liabilities',
+      'lease liability non current',
+    ],
+  },
+  {
+    key: 'asset_retirement_obligation',
+    statement: 'balance',
+    section: 'non_current_liabilities',
+    label: 'Asset Retirement Obligation',
+    synonyms: ['asset retirement obligation', 'asset retirement obligations', 'decommissioning obligation'],
+  },
+  {
+    key: 'total_non_current_liabilities',
+    statement: 'balance',
+    section: 'non_current_liabilities',
+    label: 'Total Non-Current Liabilities',
+    synonyms: ['total non current liabilities', 'total noncurrent liabilities', 'non current liabilities', 'noncurrent liabilities'],
+    total: true,
   },
   {
     key: 'total_liabilities',
@@ -721,6 +944,53 @@ const TAXONOMY: CategoryDefinition[] = [
     ],
   },
   {
+    key: 'capital_securities',
+    statement: 'balance',
+    section: 'equity',
+    label: 'Capital Securities',
+    synonyms: [
+      'capital securities',
+      'capital security',
+      'perpetual securities',
+      'perpetual capital securities',
+      'redeemable perpetual securities',
+    ],
+  },
+  {
+    key: 'equity_reserves',
+    statement: 'balance',
+    section: 'equity',
+    label: 'Equity Reserves',
+    synonyms: [
+      'equity reserves',
+      'equity reserve',
+      'reserve for retirement plan',
+      'equity reserve for retirement plan',
+      'other reserves',
+    ],
+  },
+  {
+    key: 'equity_attributable_to_parent',
+    statement: 'balance',
+    section: 'equity',
+    label: "Total Equity Attributable to Equity Holders of the Parent",
+    synonyms: [
+      'total equity attributable to equity holders of the parent company',
+      'total equity attributable to equity holders of the parent',
+      'total equity attributable to equity holders of parent company',
+      'total equity attributable to equity holders of parent',
+      'total equity attributable to owners of the parent company',
+      'total equity attributable to owners of the parent',
+      'total equity attributable to parent company',
+      'total equity attributable to parent',
+      'equity attributable to equity holders of the parent company',
+      'equity attributable to equity holders of the parent',
+      'equity attributable to owners of the parent',
+      'equity attributable to parent',
+    ],
+    total: true,
+  },
+  {
     key: 'total_equity',
     statement: 'balance',
     section: 'total_equity',
@@ -732,7 +1002,6 @@ const TAXONOMY: CategoryDefinition[] = [
       'total equity',
       'stockholders equity',
       'shareholders equity',
-      'total equity attributable to parent',
       'total shareholders investment',
     ],
     total: true,
@@ -893,6 +1162,8 @@ function normalizeLabel(input: string): string {
     .replace(/&/g, ' and ')
     .replace(/['’`]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\bnon\s+current\b/g, 'noncurrent')
+    .replace(/\bnon\s+controlling\b/g, 'noncontrolling')
     .trim()
     .replace(/\s+/g, ' ');
 }
@@ -915,6 +1186,8 @@ function normalizeDecimalSeparators(input: string): string | null {
     } else {
       s = s.replace(/,/g, '');
     }
+  } else if (/^[1-9]\d{0,2}\.\d{3}$/.test(s)) {
+    s = s.replace(/\./g, '');
   }
   if (!/^[+-]?\d*\.?\d+$/.test(s)) return null;
   return s;
@@ -926,6 +1199,9 @@ function parseNumberCell(cell: unknown): number | null {
   let s = String(cell).trim();
   if (!s) return null;
   if (DASH_RE.test(s)) return 0;
+  if (/^\(?\s*(?:high|low|nm|n\/a)\s*\)?$/i.test(s)) return null;
+  s = s.replace(/[a-z₱$€£¥₹]/gi, '').replace(/=/g, '').trim();
+  if (!s) return null;
   let negative = false;
   const paren = /^\((.*)\)$/.exec(s);
   if (paren) {
@@ -974,6 +1250,7 @@ function normalizeExtractedLine(input: string): string {
     .replace(/\u00a0/g, ' ')
     .replace(/\s+/g, ' ')
     .replace(/([$€£¥₹])\s+(?=\d)/g, '$1')
+    .replace(/\bp\s*=\s*(?=\d)/gi, '')
     .replace(/(\d)\s+%/g, '$1%')
     .trim();
 }
@@ -1057,6 +1334,9 @@ function extractLabel(cells: string[], firstNumericCol: number): string {
   return parts.join(' ').replace(/\s+/g, ' ').trim();
 }
 
+const HEADER_ANNOTATION_RE =
+  /^(?:%|amounts?|change|increase|decrease|increase decrease|as restated|restated|horizontal analysis|vertical analysis|in millions|in thousands|in billions|usd|php|pesos?|notes?|no|period|net|total|average)$/;
+
 function parsePeriodHeader(cells: string[]): PeriodColumn[] | null {
   const periods: PeriodColumn[] = [];
   let nonPeriodText = 0;
@@ -1067,7 +1347,15 @@ function parsePeriodHeader(cells: string[]): PeriodColumn[] | null {
       periods.push({ label: raw, col });
       continue;
     }
-    if (parseNumberCell(raw) !== null) return null;
+    if (/%\s*$/.test(raw)) continue;
+    const normalized = raw
+      .toLowerCase()
+      .replace(/[^a-z%]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (normalized === '' || HEADER_ANNOTATION_RE.test(normalized)) continue;
+    const trimmed = raw.replace(/[₱$€£¥₹]/g, '').trim();
+    if (/^[-+(]?[0-9][0-9.,\s()+-]*$/.test(trimmed)) return null;
     nonPeriodText += 1;
   }
   if (periods.length >= 2 || (periods.length === 1 && nonPeriodText === 0)) return periods;
@@ -1103,6 +1391,18 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return intersection / (a.size + b.size - intersection);
 }
 
+const HEADING_CASHFLOW_RE = /\bcash flows?(?:\s+(?:from|arising|used))?\b|\bstatement of cash flows?\b/;
+const HEADING_BALANCE_RE = /\b(?:statements? of financial position|balance sheets?)\b/;
+const HEADING_INCOME_RE = /\bstatements? of (?:income|comprehensive income|profit or loss|operations)\b/;
+
+function detectStatementByHeading(rows: string[][]): StatementType | null {
+  const text = rows.slice(0, 12).flat().join(' ').toLowerCase();
+  if (HEADING_CASHFLOW_RE.test(text)) return 'cashflow';
+  if (HEADING_BALANCE_RE.test(text)) return 'balance';
+  if (HEADING_INCOME_RE.test(text)) return 'income';
+  return null;
+}
+
 function matchCategory(rawLabel: string, minConfidence: number): MatchResult {
   const norm = normalizeLabel(rawLabel);
   if (!norm) return { category: null, confidence: 0 };
@@ -1135,18 +1435,103 @@ function matchCategory(rawLabel: string, minConfidence: number): MatchResult {
   return { category: null, confidence: 0 };
 }
 
+const HEADER_YEAR_RE = /^(?:19|20)\d{2}$/;
+const HEADER_YEAR_PREFIX_RE = /^(?:19|20)\d{2}\b/;
+
+function isHeaderLikeCell(cell: string): boolean {
+  const trimmed = cell.trim();
+  if (!trimmed) return true;
+  if (HEADER_YEAR_RE.test(trimmed)) return true;
+  if (trimmed.length <= 24 && HEADER_YEAR_PREFIX_RE.test(trimmed)) return true;
+  const normalized = trimmed.toLowerCase().replace(/[^a-z%]+/g, ' ').trim();
+  return HEADER_ANNOTATION_RE.test(normalized) || /^(note|as restated|unaudited|audited)$/.test(normalized);
+}
+
+function isHeaderLikeRow(cells: string[]): boolean {
+  const nonEmpty = cells.filter((cell) => cell.trim());
+  return nonEmpty.length > 0 && nonEmpty.every(isHeaderLikeCell);
+}
+
+const SECTION_HEADERS = new Set([
+  'assets',
+  'current assets',
+  'noncurrent assets',
+  'non current assets',
+  'liabilities',
+  'equity',
+  'current liabilities',
+  'noncurrent liabilities',
+  'non current liabilities',
+  'liabilities and equity',
+  'total assets',
+  'total liabilities',
+  'total equity',
+  'shareholders equity',
+  'stockholders equity',
+  'equity attributable to equity holders',
+  'equity attributable to equity holders of the parent company',
+  'activities',
+  'operating activities',
+  'investing activities',
+  'financing activities',
+  'cash flows from operating',
+  'cash flows from investing',
+  'cash flows from financing',
+  'forward',
+]);
+
+function isSectionHeaderRow(text: string): boolean {
+  const normalized = text.toLowerCase().trim();
+  return SECTION_HEADERS.has(normalized) || /^cash flows from /.test(normalized);
+}
+
+export function mergeContinuationRows(rows: string[][]): string[][] {
+  const out: string[][] = [];
+  let pending: string | null = null;
+  for (const row of rows) {
+    if (row.length === 1 && !/\d/.test(row[0])) {
+      const text = row[0].trim();
+      if (isSectionHeaderRow(text)) {
+        pending = null;
+        out.push(row);
+      } else {
+        pending = pending ? `${pending} ${text}` : text;
+      }
+      continue;
+    }
+    if (pending) {
+      const first = row[0] ?? '';
+      out.push(/\d/.test(first) ? [pending, ...row] : [`${pending} ${first}`.trim(), ...row.slice(1)]);
+      pending = null;
+    } else {
+      out.push(row);
+    }
+  }
+  if (pending) out.push([pending]);
+  return out;
+}
+
 function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): IntermediateStatement | null {
-  const unit = detectUnitMultiplier(table);
+  const effectiveTable: RawTable =
+    table.periods && table.periods.length ? { ...table, rows: mergeContinuationRows(table.rows) } : table;
+  const unit = detectUnitMultiplier(effectiveTable);
   const multiplier = options.applyUnitScaling ? unit.multiplier : 1;
 
   let periods: PeriodColumn[] | null = null;
-  let headerRowIndex = -1;
-  for (let index = 0; index < table.rows.length; index += 1) {
-    const header = parsePeriodHeader(table.rows[index]);
-    if (header) {
-      periods = header;
-      headerRowIndex = index;
-      break;
+  const headerRows = new Set<number>();
+  if (effectiveTable.periods && effectiveTable.periods.length) {
+    periods = effectiveTable.periods.map((label, index) => ({ label, col: index }));
+    effectiveTable.rows.forEach((row, index) => {
+      if (isHeaderLikeRow(row)) headerRows.add(index);
+    });
+  } else {
+    for (let index = 0; index < effectiveTable.rows.length; index += 1) {
+      const header = parsePeriodHeader(effectiveTable.rows[index]);
+      if (header) {
+        periods = header;
+        headerRows.add(index);
+        break;
+      }
     }
   }
 
@@ -1157,8 +1542,8 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
 
   const parsedRows: { label: string; entries: NumericEntry[]; rowIndex: number }[] = [];
   let maxNumericCount = 0;
-  table.rows.forEach((cells, rowIndex) => {
-    if (rowIndex === headerRowIndex) return;
+  effectiveTable.rows.forEach((cells, rowIndex) => {
+    if (headerRows.has(rowIndex)) return;
     const entries = collectNumericEntries(cells);
     maxNumericCount = Math.max(maxNumericCount, entries.length);
     if (entries.length === 0) return;
@@ -1227,7 +1612,8 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
   if (options.hint) {
     type = options.hint;
   } else {
-    type = (Object.keys(statementScores) as StatementType[]).reduce((best, candidate) =>
+    const heading = detectStatementByHeading(effectiveTable.rows);
+    type = heading ?? (Object.keys(statementScores) as StatementType[]).reduce((best, candidate) =>
       statementScores[candidate] > statementScores[best] ? candidate : best
     );
   }
@@ -1358,12 +1744,18 @@ function applyIncomeDerived(statement: NormalizedStatement): NormalizedStatement
 function applyBalanceDerived(statement: NormalizedStatement): NormalizedStatement {
   const items = new Map(statement.lineItems.map((item) => [item.category, item] as const));
   const currentAssets = sectionCategories('current_assets').filter((category) => category !== 'total_current_assets');
-  const nonCurrentAssets = sectionCategories('non_current_assets');
+  const nonCurrentAssets = sectionCategories('non_current_assets').filter(
+    (category) => category !== 'total_non_current_assets'
+  );
   const currentLiabilities = sectionCategories('current_liabilities').filter(
     (category) => category !== 'total_current_liabilities'
   );
-  const nonCurrentLiabilities = sectionCategories('non_current_liabilities');
-  const equity = sectionCategories('equity');
+  const nonCurrentLiabilities = sectionCategories('non_current_liabilities').filter(
+    (category) => category !== 'total_non_current_liabilities'
+  );
+  const equity = sectionCategories('equity').filter(
+    (category) => category !== 'equity_attributable_to_parent'
+  );
 
   for (const period of statement.periods) {
     let totalCurrentAssets = getValue(items, 'total_current_assets', period);
@@ -1372,6 +1764,15 @@ function applyBalanceDerived(statement: NormalizedStatement): NormalizedStatemen
       if (derived !== null) {
         addDerivedItem(items, 'total_current_assets', period, derived);
         totalCurrentAssets = derived;
+      }
+    }
+
+    let totalNonCurrentAssets = getValue(items, 'total_non_current_assets', period);
+    if (totalNonCurrentAssets === null) {
+      const derived = sumCategories(items, nonCurrentAssets, period);
+      if (derived !== null) {
+        addDerivedItem(items, 'total_non_current_assets', period, derived);
+        totalNonCurrentAssets = derived;
       }
     }
 
@@ -1388,6 +1789,15 @@ function applyBalanceDerived(statement: NormalizedStatement): NormalizedStatemen
       if (derived !== null) {
         addDerivedItem(items, 'total_current_liabilities', period, derived);
         totalCurrentLiabilities = derived;
+      }
+    }
+
+    let totalNonCurrentLiabilities = getValue(items, 'total_non_current_liabilities', period);
+    if (totalNonCurrentLiabilities === null) {
+      const derived = sumCategories(items, nonCurrentLiabilities, period);
+      if (derived !== null) {
+        addDerivedItem(items, 'total_non_current_liabilities', period, derived);
+        totalNonCurrentLiabilities = derived;
       }
     }
 
@@ -1677,6 +2087,7 @@ export function resolveOptions(options?: ParserOptions): ResolvedOptions {
     relTolerance: options?.relTolerance ?? DEFAULT_OPTIONS.relTolerance,
     applyUnitScaling: options?.applyUnitScaling ?? DEFAULT_OPTIONS.applyUnitScaling,
     minMatchConfidence: options?.minMatchConfidence ?? DEFAULT_OPTIONS.minMatchConfidence,
+    ocr: options?.ocr ?? DEFAULT_OPTIONS.ocr,
   };
 }
 
@@ -1722,9 +2133,10 @@ function assembleDocument(
 function buildParsedDocument(
   tables: RawTable[],
   options: ResolvedOptions,
-  source: DocumentSourceMeta
+  source: DocumentSourceMeta,
+  baseWarnings: string[] = []
 ): ParsedDocument {
-  const warnings: string[] = [];
+  const warnings: string[] = [...baseWarnings];
   if (!tables.length) warnings.push('No tabular content could be extracted from the document.');
 
   const intermediates: IntermediateStatement[] = [];
@@ -1750,7 +2162,65 @@ function buildParsedDocument(
     );
   }
 
-  return assembleDocument(intermediates, options, source, warnings);
+  const annualNetIncome = detectAnnualNetIncome(tables);
+  const document = assembleDocument(intermediates, options, source, warnings);
+  return Object.keys(annualNetIncome).length ? { ...document, annualNetIncome } : document;
+}
+
+const PERIOD_HEADER_RE =
+  /^(january|february|march|april|may|june|july|august|september|october|november|december)(\d{1,2})(19|20)(\d{2})/;
+
+function periodHeader(row: string[]): { fiscalYearEnd: boolean; year: string } | null {
+  const compact = row.join('').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const match = PERIOD_HEADER_RE.exec(compact);
+  if (!match) return null;
+  const year = `${match[3]}${match[4]}`;
+  return { fiscalYearEnd: match[1] === 'december' && match[2] === '31', year };
+}
+
+function lastNumericCell(row: string[]): number | null {
+  for (let index = row.length - 1; index >= 0; index -= 1) {
+    const value = parseNumberCell(row[index]);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+function detectAnnualNetIncome(tables: RawTable[]): Record<string, AnnualNetIncomeReference> {
+  const result: Record<string, AnnualNetIncomeReference> = {};
+  for (const table of tables) {
+    let year: string | null = null;
+    let hasInterestExpense = false;
+    let netIncome: number | null = null;
+    const flush = () => {
+      if (year && hasInterestExpense && netIncome !== null && result[year] === undefined) {
+        result[year] = {
+          value: netIncome,
+          source: `Segment/period note "${table.name}", net income row for the fiscal year ended December 31, ${year}`,
+        };
+      }
+    };
+    for (const row of table.rows) {
+      const header = periodHeader(row);
+      if (header) {
+        flush();
+        year = header.fiscalYearEnd ? header.year : null;
+        hasInterestExpense = false;
+        netIncome = null;
+        continue;
+      }
+      if (!year) continue;
+      const label = normalizeLabel(row[0] ?? '');
+      if (/^net income\b/.test(label)) {
+        const value = lastNumericCell(row);
+        if (value !== null) netIncome = value;
+      } else if (/^interest expense\b/.test(label)) {
+        hasInterestExpense = true;
+      }
+    }
+    flush();
+  }
+  return result;
 }
 
 export async function parseFinancialDocument(input: ParseInput): Promise<ParsedDocument> {
@@ -1759,11 +2229,55 @@ export async function parseFinancialDocument(input: ParseInput): Promise<ParsedD
   const options = resolveOptions(input.options);
 
   const tables = format === 'pdf' ? await extractPdfTables(buffer) : extractWorkbookTables(buffer, format);
-  return buildParsedDocument(tables, options, {
+  let document = buildParsedDocument(tables, options, {
     filename: input.filename,
     format,
     tableCount: tables.length,
   });
+
+  if (format === 'pdf' && options.ocr) {
+    const { extractEmbeddedJpegs, ocrEmbeddedImages } = await import('./ocr');
+    const images = extractEmbeddedJpegs(buffer, OCR_MIN_IMAGE_BYTES, OCR_MAX_IMAGES);
+    const scanned = images.length >= OCR_SCANNED_IMAGE_COUNT;
+    if (scanned || shouldAttemptOcr(document)) {
+      const ocr = await ocrEmbeddedImages(buffer);
+      if (ocr.tables.length) {
+        const ocrDocument = buildParsedDocument(
+          ocr.tables,
+          options,
+          { filename: input.filename, format, tableCount: ocr.tables.length },
+          ocr.warnings
+        );
+        const ocrCount = statementCount(ocrDocument);
+        const textCount = statementCount(document);
+        if (ocrCount >= 2 && (scanned ? ocrCount >= textCount : ocrCount > textCount)) {
+          document = {
+            ...ocrDocument,
+            annualNetIncome: ocrDocument.annualNetIncome ?? document.annualNetIncome,
+          };
+        } else {
+          document = { ...document, warnings: [...document.warnings, ...ocr.warnings] };
+        }
+      } else if (ocr.warnings.length) {
+        document = { ...document, warnings: [...document.warnings, ...ocr.warnings] };
+      }
+    }
+  }
+
+  return document;
+}
+
+const OCR_MIN_IMAGE_BYTES = 60_000;
+const OCR_MAX_IMAGES = 24;
+const OCR_SCANNED_IMAGE_COUNT = 2;
+
+function statementCount(document: ParsedDocument): number {
+  const { income, balance, cashflow } = document.statements;
+  return [income, balance, cashflow].filter(Boolean).length;
+}
+
+function shouldAttemptOcr(document: ParsedDocument): boolean {
+  return statementCount(document) < 3;
 }
 
 export interface ParseTextInput {
@@ -1900,4 +2414,4 @@ export async function parseFinancialFile(filePath: string, options?: ParserOptio
   });
 }
 
-export { TAXONOMY, normalizeLabel, parseNumberCell };
+export { TAXONOMY, normalizeLabel, parseNumberCell, lineToRow };

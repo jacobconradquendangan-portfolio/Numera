@@ -62,9 +62,10 @@ describe('end-to-end pipeline: paste text -> parse -> analyze -> CFI ratios', ()
     expect(prior?.percentChange).toBeCloseTo(13.4021, 3);
   });
 
-  it('computes the full 27-ratio CFI suite with nothing unavailable', () => {
-    expect(report.ratios).toHaveLength(27);
-    expect(report.ratios.filter((entry) => entry.availability === 'unavailable')).toHaveLength(0);
+  it('computes the full 30-ratio CFI suite with nothing unavailable except operational metrics', () => {
+    expect(report.ratios).toHaveLength(30);
+    const unavailable = report.ratios.filter((entry) => entry.availability === 'unavailable');
+    expect(unavailable.map((entry) => entry.id)).toEqual(['volume-growth']);
   });
 
   it('cross-checks a liquidity ratio against the parsed statements', () => {

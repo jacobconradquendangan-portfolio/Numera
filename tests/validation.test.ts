@@ -62,6 +62,26 @@ describe('validateManualStatements', () => {
     expect(mismatch!.detail).toContain('10,000');
   });
 
+  it('ignores a parent-attributable equity subtotal when reading total equity', () => {
+    const issues = validateManualStatements([
+      {
+        type: 'balance',
+        periods: ['2025'],
+        lines: [
+          { label: 'Total Assets', values: ['113419'] },
+          { label: 'Total Liabilities', values: ['0'] },
+          {
+            label: 'Total Equity Attributable to Equity Holders of the Parent Company',
+            values: ['103105'],
+          },
+          { label: 'Non-controlling Interests', values: ['10314'] },
+          { label: 'Total Equity', values: ['113419'] },
+        ],
+      },
+    ]);
+    expect(issues.some((entry) => entry.title.includes('does not reconcile'))).toBe(false);
+  });
+
   it('blocks duplicate periods and unreadable values', () => {
     const issues = validateManualStatements([
       {

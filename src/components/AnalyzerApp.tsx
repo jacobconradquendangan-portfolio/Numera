@@ -23,6 +23,7 @@ import type {
   AnalyzeSuccess,
   DayCountBasis,
   ManualStatementPayload,
+  NetIncomeBasis,
   NormalizedStatement,
   SupplementalForm,
 } from '@/lib/types';
@@ -40,6 +41,9 @@ const EMPTY_SUPPLEMENTAL: SupplementalForm = {
   ebit: '',
   totalDebt: '',
   cashAndEquivalents: '',
+  netIncomeTrailing12Months: '',
+  volumeCurrent: '',
+  volumePrior: '',
 };
 
 type InputMode = 'upload' | 'paste' | 'manual';
@@ -63,6 +67,7 @@ export default function AnalyzerApp() {
   const [selectedPeriod, setSelectedPeriod] = useState('');
   const [supplemental, setSupplemental] = useState<SupplementalForm>(EMPTY_SUPPLEMENTAL);
   const [dayCountBasis, setDayCountBasis] = useState<DayCountBasis>(365);
+  const [netIncomeBasis, setNetIncomeBasis] = useState<NetIncomeBasis>('period');
   const [filename, setFilename] = useState<string | undefined>(undefined);
   const [manualValidation, setManualValidation] = useState<ManualValidationState>({
     blocked: false,
@@ -101,6 +106,7 @@ export default function AnalyzerApp() {
         if (value.trim() !== '') body.append(key, value.trim());
       }
       body.append('daysInYear', String(dayCountBasis));
+      body.append('netIncomeBasis', netIncomeBasis);
       try {
         const response = await fetch('/api/analyze', { method: 'POST', body });
         const contentType = response.headers.get('content-type') ?? '';
@@ -137,7 +143,7 @@ export default function AnalyzerApp() {
         setLoading(false);
       }
     },
-    [supplemental, dayCountBasis]
+    [supplemental, dayCountBasis, netIncomeBasis]
   );
 
   const handleFile = useCallback(
@@ -193,6 +199,7 @@ export default function AnalyzerApp() {
     setFilename(undefined);
     setSupplemental(EMPTY_SUPPLEMENTAL);
     setDayCountBasis(365);
+    setNetIncomeBasis('period');
     setClearTick((tick) => tick + 1);
   }, []);
 
@@ -400,6 +407,8 @@ export default function AnalyzerApp() {
           busy={loading}
           dayCountBasis={dayCountBasis}
           onDayCountBasisChange={setDayCountBasis}
+          netIncomeBasis={netIncomeBasis}
+          onNetIncomeBasisChange={setNetIncomeBasis}
         />
       </div>
 

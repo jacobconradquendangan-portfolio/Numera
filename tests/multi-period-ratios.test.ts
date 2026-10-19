@@ -41,7 +41,7 @@ describe('multi-period ratio computation', () => {
     const reports = computeRatiosForAllPeriods(document);
     expect(reports.map((report) => report.period)).toEqual(['2023', '2024', '2025']);
     for (const report of reports) {
-      expect(report.ratios).toHaveLength(27);
+      expect(report.ratios).toHaveLength(30);
     }
   });
 

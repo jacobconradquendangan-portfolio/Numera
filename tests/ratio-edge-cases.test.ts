@@ -79,6 +79,100 @@ describe('ratio edge cases: missing averages and zero denominators', () => {
     expect(periodEndRoe.notes.join(' ')).toMatch(/fell back to period-end/i);
   });
 
+  it('prefers a supplied trailing-12-month net income for ROE and ROA', () => {
+    const document = parseFinancialText({ text: SAMPLE_TEXT });
+    const base = computeRatiosForDocument(document, { supplemental: SAMPLE_SUPPLEMENTAL_NUMERIC });
+    const report = computeRatiosForDocument(document, {
+      supplemental: {
+        ...SAMPLE_SUPPLEMENTAL_NUMERIC,
+        netIncomeTrailing12Months: 110000,
+        netIncomeBasis: 'trailing',
+      },
+    });
+
+    const baseRoe = findRatio(base, 'return-on-equity');
+    const roe = findRatio(report, 'return-on-equity');
+    const roa = findRatio(report, 'return-on-assets');
+    expect(roe.substitution).toContain('110,000');
+    expect(roa.substitution).toContain('110,000');
+    expect(roe.value).not.toBeCloseTo(baseRoe.value ?? 0, 6);
+    expect(roe.notes.join(' ')).toMatch(/trailing-12-month/i);
+    expect(roa.notes.join(' ')).toMatch(/trailing-12-month/i);
+  });
+
+  it('derives trailing-12-month net income from a prior fiscal-year figure for ROE and ROA', () => {
+    const income: Line[] = [
+      { label: 'Revenue', values: [600000, 660000] },
+      { label: 'Operating Income', values: [22000, 25000] },
+      { label: 'Interest Expense', values: [15649, 18000] },
+      { label: 'Income Tax Expense', values: [1681, 2500] },
+      { label: 'Net Income', values: [7068, 9670] },
+    ];
+    const balance: Line[] = [
+      { label: 'Total Assets', values: [445769, 468802] },
+      { label: 'Total Liabilities', values: [346109, 355383] },
+      { label: "Total Shareholders' Equity", values: [99660, 113419] },
+    ];
+    const base = buildDocument(['2024', '2025'], income, balance);
+    const document = {
+      ...base,
+      annualNetIncome: { '2024': { value: 8471, source: 'Segment note, net income row for FY2024' } },
+    };
+
+    const period = computeRatiosForDocument(document);
+    expect(findRatio(period, 'return-on-equity').substitution).toContain('9,670');
+
+    const report = computeRatiosForDocument(document, { supplemental: { netIncomeBasis: 'trailing' } });
+    const roe = findRatio(report, 'return-on-equity');
+    const roa = findRatio(report, 'return-on-assets');
+
+    expect(roe.substitution).toContain('11,073');
+    expect(roa.substitution).toContain('11,073');
+    expect(roe.value).toBeCloseTo(10.3934, 3);
+    expect(roa.value).toBeCloseTo(2.4214, 3);
+    expect(roe.notes.join(' ')).toMatch(/trailing-12-month/i);
+    expect(roe.inputs.some((input) => /FY2024/.test(input.source))).toBe(true);
+  });
+
+  it('lets a manual trailing-12-month override take precedence over auto-derivation', () => {
+    const income: Line[] = [
+      { label: 'Revenue', values: [600000, 660000] },
+      { label: 'Net Income', values: [7068, 9670] },
+    ];
+    const balance: Line[] = [
+      { label: 'Total Assets', values: [445769, 468802] },
+      { label: "Total Shareholders' Equity", values: [99660, 113419] },
+    ];
+    const document = {
+      ...buildDocument(['2024', '2025'], income, balance),
+      annualNetIncome: { '2024': { value: 8471, source: 'Segment note' } },
+    };
+
+    const report = computeRatiosForDocument(document, {
+      supplemental: { netIncomeBasis: 'trailing', netIncomeTrailing12Months: 99999 },
+    });
+    const roe = findRatio(report, 'return-on-equity');
+    expect(roe.substitution).toContain('99,999');
+    expect(roe.substitution).not.toContain('11,073');
+  });
+
+  it('falls back to the reported period when trailing net income cannot be derived', () => {
+    const income: Line[] = [
+      { label: 'Revenue', values: [600000, 660000] },
+      { label: 'Net Income', values: [7068, 9670] },
+    ];
+    const balance: Line[] = [
+      { label: 'Total Assets', values: [445769, 468802] },
+      { label: "Total Shareholders' Equity", values: [99660, 113419] },
+    ];
+    const report = computeRatiosForDocument(buildDocument(['2024', '2025'], income, balance), {
+      supplemental: { netIncomeBasis: 'trailing' },
+    });
+    const roe = findRatio(report, 'return-on-equity');
+    expect(roe.substitution).toContain('9,670');
+    expect(roe.notes.join(' ')).toMatch(/could not be derived/i);
+  });
+
   it('returns unavailable (not Infinity) when equity is zero', () => {
     const report = computeRatiosForDocument(
       buildDocument(['2025'], null, [
@@ -105,6 +199,32 @@ describe('ratio edge cases: missing averages and zero denominators', () => {
     expect(current.value).toBeNull();
     expect(current.availability).toBe('unavailable');
     expect(current.notes.join(' ')).toMatch(/zero/i);
+  });
+
+  it('treats interest expense as a positive coverage denominator and derives operating income', () => {
+    const report = computeRatiosForDocument(
+      buildDocument(
+        ['2025'],
+        [
+          { label: 'Revenue', values: [100000] },
+          { label: 'Cost of Goods Sold', values: [60000] },
+          { label: 'Gross Profit', values: [40000] },
+          { label: 'Selling and Administrative Expenses', values: [-20000] },
+          { label: 'Other Operating Income', values: [5000] },
+          { label: 'Interest Expense', values: [-2000] },
+          { label: 'Income Before Income Tax', values: [23000] },
+          { label: 'Net Income', values: [20000] },
+        ],
+        null
+      )
+    );
+
+    const tie = findRatio(report, 'times-interest-earned');
+    expect(tie.value).toBeCloseTo(12.5, 6);
+
+    const operatingMargin = findRatio(report, 'operating-margin');
+    expect(operatingMargin.value).toBeCloseTo(25, 6);
+    expect(operatingMargin.substitution).toContain('25,000');
   });
 
   it('returns unavailable when revenue is zero', () => {

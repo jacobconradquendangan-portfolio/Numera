@@ -88,6 +88,7 @@ function balanceKey(normalized: string): BalanceKey | null {
   if (TOTAL_LE_RE.test(normalized) || /total liabilities and equity/.test(normalized)) return 'liabilitiesAndEquity';
   if (normalized.includes('total liabilities')) return 'liabilities';
   if (normalized.includes('total assets')) return 'assets';
+  if (/attributable to/.test(normalized)) return null;
   if (normalized.includes('total equity') || /(shareholders|stockholders) equity/.test(normalized)) return 'equity';
   return null;
 }

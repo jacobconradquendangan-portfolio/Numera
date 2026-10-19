@@ -33,6 +33,7 @@ export type {
   RatioAvailability,
   SupplementalInputs,
   DayCountBasis,
+  NetIncomeBasis,
 } from '@/lib/engine/ratios';
 
 export interface AnalyzeSuccess {
@@ -60,6 +61,9 @@ export interface SupplementalForm {
   ebit: string;
   totalDebt: string;
   cashAndEquivalents: string;
+  netIncomeTrailing12Months: string;
+  volumeCurrent: string;
+  volumePrior: string;
 }
 
 export interface CategoryOption {

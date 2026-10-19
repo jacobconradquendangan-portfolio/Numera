@@ -75,7 +75,9 @@ export const PASTED_TEXT = [INCOME_TEXT, '', '', BALANCE_TEXT].join('\n');
 const toNumber = (value: string) => Number(value.replace(/[^0-9.-]/g, ''));
 
 export const SAMPLE_SUPPLEMENTAL_NUMERIC: SupplementalInputs = Object.fromEntries(
-  Object.entries(SAMPLE_SUPPLEMENTAL).map(([key, value]) => [key, toNumber(value)])
+  Object.entries(SAMPLE_SUPPLEMENTAL)
+    .filter(([, value]) => value.trim() !== '')
+    .map(([key, value]) => [key, toNumber(value)])
 ) as SupplementalInputs;
 
 export { row };

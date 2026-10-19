@@ -50,13 +50,15 @@ leaves your device.
 | Capability | Description |
 | --- | --- |
 | **Multiple input paths** | Manual entry with an editable period grid and a searchable line-item combobox; paste statement text; or upload PDF, Excel (`.xlsx` / `.xls`) or CSV. |
-| **Automatic line-item mapping** | A 44-category taxonomy matched by exact, substring and fuzzy (Jaccard ≥ 0.6) rules, with unit scaling auto-detected from `(in thousands/millions)` notes. |
+| **Scanned PDF fallback** | When a PDF renders its statements as images (no extractable text), Numera detects the embedded raster pages and runs an opt-in OCR fallback (`tesseract.js`) to read them, flagging every figure as machine-recognised so it can be checked. Discrete OCR is skipped when the digital text is already complete. |
+| **Automatic line-item mapping** | A 70-category taxonomy matched by exact, substring and fuzzy (Jaccard ≥ 0.6) rules, with unit scaling auto-detected from `(in thousands/millions)` notes. |
 | **Balance-sheet validation** | Proves `Assets = Liabilities + Equity` within a configurable tolerance and surfaces clear, actionable warnings. |
 | **Vertical & horizontal analysis** | Every line item as a share of revenue (income statement), total assets (balance sheet) or operating cash flow (cash flow statement), plus period-over-period variance (Δ and %) in sortable tables. |
-| **CFI ratio engine** | 27 ratios across liquidity, profitability, leverage, efficiency and valuation — each reported as `computed`, `partial` or `unavailable` with a full audit trail. |
+| **CFI ratio engine** | 30 ratios across liquidity, profitability, leverage, efficiency and valuation — each reported as `computed`, `partial` or `unavailable` with a full audit trail. |
 | **Cash flow statement** | Detects operating, investing and financing activities and derives the net change in cash, feeding the operating-cash-flow and CAPEX ratios from the statement itself (external inputs remain a fallback). |
 | **Multi-period ratios** | Every ratio is computed for every period, using true average balances once a prior period exists, so values, cards and charts follow the selected period. |
 | **Configurable day-count basis** | 365-day (default) or 360-day convention for receivables, inventory and defensive-interval days; every day-based solution shows the chosen basis. |
+| **Return basis toggle** | Switch ROE and ROA between the reported period's net income and trailing 12 months; the trailing figure is auto-derived from the prior fiscal-year net income found in the document (with the derivation shown in the solution), or you can enter your own **Trailing 12-Mo Net Income** override, which takes precedence. |
 | **Transparent solutions** | Each ratio exposes its formula, the substituted source values (data lineage) and the step-by-step result, plus a citation linking to the Corporate Finance Institute page each formula follows — with a note wherever the engine's definition varies from CFI's (cash basis interest coverage, CAPEX to operating cash, cash ratio). |
 | **Financial health summary** | A rule-based narrative that reads the computed ratios and reports strengths and areas to watch across liquidity, profitability, leverage, coverage, efficiency, cash flow, growth and valuation — shown on screen and included in the report. Rules of thumb are cited from Corporate Finance Institute reference pages, with links in the summary and the PDF report. |
 | **Downloadable summary report** | Export a text-based PDF summary — financial health summary, overview, vertical and horizontal analysis (income, balance and cash flow), and every ratio's audit trail — for the selected period or all periods. |
@@ -70,8 +72,8 @@ leaves your device.
 | Category | Ratios |
 | --- | --- |
 | **Profitability** | Return on Equity · Return on Assets · Return on Capital Employed · Gross Margin · Operating Margin · Net Profit Margin |
-| **Leverage** | Debt-to-Equity · Equity Ratio · Debt Ratio · Financial Leverage (Equity Multiplier) |
-| **Efficiency** | AR Turnover · AR Days · Asset Turnover · Inventory Turnover · Inventory Days |
+| **Leverage** | Debt-to-Equity · Equity Ratio · Debt Ratio · Financial Leverage (Equity Multiplier) · Asset-to-Equity |
+| **Efficiency** | AR Turnover · AR Days · Asset Turnover · Inventory Turnover · Inventory Days · Sales Growth · Volume Growth |
 | **Liquidity** | Current Ratio · Quick Ratio · Cash Ratio · Defensive Interval Ratio · Times Interest Earned · TIE (Cash Basis) · CAPEX to Operating Cash · Operating Cash Flow Ratio |
 | **Valuation** | P/E Ratio · EV/EBITDA · EV/EBIT · EV/Revenue |
 
@@ -88,7 +90,7 @@ flowchart LR
   A["Input<br/>PDF · Excel · CSV<br/>text · manual"] --> B["Parser<br/>taxonomy matching<br/>normalisation"]
   B --> C["Balance-sheet<br/>validation"]
   B --> D["Analyzer<br/>vertical &<br/>horizontal"]
-  B --> E["Ratio engine<br/>27 CFI ratios"]
+  B --> E["Ratio engine<br/>30 CFI ratios"]
   C --> F["Interface &<br/>summary report"]
   D --> F
   E --> F
@@ -107,7 +109,7 @@ and reusable outside the UI.
 | Language | TypeScript 5 (strict) |
 | Styling | Tailwind CSS v4 |
 | Charts | Recharts |
-| Parsing | `pdf-parse` (PDF) · SheetJS `xlsx` (Excel/CSV) |
+| Parsing | `pdf-parse` + `tesseract.js` OCR fallback (PDF) · SheetJS `xlsx` (Excel/CSV) |
 | Testing | Vitest |
 | CI | GitHub Actions (typecheck · lint · test) |
 
@@ -146,8 +148,13 @@ Open <http://localhost:3000>.
 1. Choose an input mode — **Manual entry**, **Paste text**, or **Upload file**.
 2. Provide the statement figures. Periods are the editable column headers.
 3. Optionally expand **Market inputs** to feed valuation ratios and override debt, cash, EBITDA or
-   EBIT, and to pick the **day-count basis** (365 or 360 days) used by the day-based ratios. Press
-   **Load sample** to fill every field with the sample market inputs.
+   EBIT; to supply **current/prior operating volume** for Volume Growth; and to pick the
+   **day-count basis** (365 or 360 days) used by the day-based ratios and the **return basis**
+   (reported period or trailing 12 months) for ROE/ROA. When set to trailing, the figure is
+   auto-derived from the document if possible; to force your own value, enter **Trailing 12-Mo Net
+   Income** (commonly `latest full-year net income + current year-to-date − prior-year same-period
+   year-to-date`), which overrides the derivation. Press **Load sample** to fill every field with the
+   sample market inputs.
    Cash-flow figures are entered as line items in the cash flow statement.
 4. Analyse. Review the validation banners, then explore the overview, vertical/horizontal tables,
    ratios and charts.

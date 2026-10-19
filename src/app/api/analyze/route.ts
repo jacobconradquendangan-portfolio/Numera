@@ -7,12 +7,12 @@ import {
   type ParseManualInput,
 } from '@/lib/engine/parser';
 import { analyzeDocument } from '@/lib/engine/analyzer';
-import { computeRatiosForDocument, computeRatiosForAllPeriods, SupplementalInputs } from '@/lib/engine/ratios';
+import { computeRatiosForDocument, computeRatiosForAllPeriods, SupplementalInputs, NumericSupplementalKey } from '@/lib/engine/ratios';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SUPPLEMENTAL_KEYS: (keyof SupplementalInputs)[] = [
+const SUPPLEMENTAL_KEYS: NumericSupplementalKey[] = [
   'sharePrice',
   'sharesOutstanding',
   'earningsPerShare',
@@ -24,6 +24,9 @@ const SUPPLEMENTAL_KEYS: (keyof SupplementalInputs)[] = [
   'ebit',
   'totalDebt',
   'cashAndEquivalents',
+  'netIncomeTrailing12Months',
+  'volumeCurrent',
+  'volumePrior',
 ];
 
 function readSupplemental(form: FormData): SupplementalInputs {
@@ -62,6 +65,8 @@ export async function POST(request: Request) {
   const daysRaw = String(form.get('daysInYear') ?? '');
   const daysInYear = daysRaw === '360' ? 360 : daysRaw === '365' ? 365 : undefined;
   const supplemental = readSupplemental(form);
+  const basisRaw = String(form.get('netIncomeBasis') ?? '');
+  if (basisRaw === 'trailing' || basisRaw === 'period') supplemental.netIncomeBasis = basisRaw;
 
   try {
     let document: ParsedDocument;
