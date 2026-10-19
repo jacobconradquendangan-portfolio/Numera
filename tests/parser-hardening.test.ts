@@ -162,6 +162,196 @@ describe('parser hardening', () => {
     ]);
   });
 
+  it('keeps a pending two-line heading when the next line is a section header', () => {
+    const rows = mergeContinuationRows([
+      ['CASH FLOWS FROM'],
+      ['FINANCING ACTIVITIES'],
+      ['Net cash flows provided by (used in) financing'],
+      ['activities', '(36,840)', '9,451'],
+    ]);
+
+    expect(rows).toEqual([
+      ['CASH FLOWS FROM'],
+      ['FINANCING ACTIVITIES'],
+      ['Net cash flows provided by (used in) financing activities', '(36,840)', '9,451'],
+    ]);
+  });
+
+  it('maps a financing total split across a heading and keeps cash-flow tail lines out of cash equivalents', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF CASH FLOWS\t\t',
+        'For the Nine Months Ended\t2025\t2024',
+        'Cash generated from operations\t65,993\t33,198',
+        'Net cash provided by operating activities\t65,993\t33,198',
+        'Net cash flows used in investing activities\t(4,948)\t(7,852)',
+        'CASH FLOWS FROM',
+        'FINANCING ACTIVITIES',
+        'Net cash flows provided by (used in) financing activities\t(36,840)\t9,451',
+        'EFFECTS OF EXCHANGE RATE CHANGES ON CASH AND CASH EQUIVALENTS\t144\t183',
+        'NET INCREASE IN CASH AND CASH EQUIVALENTS\t9,825\t19,479',
+        'CASH AND CASH EQUIVALENTS AT END OF PERIOD\t40,214\t46,998',
+      ].join('\n'),
+    });
+
+    const cashflow = doc.statements.cashflow;
+    expect(cashflow).not.toBeNull();
+    expect(values(cashflow, 'net_cash_from_financing_activities')).toEqual({ 2025: -36840, 2024: 9451 });
+    expect(values(cashflow, 'net_change_in_cash')).toEqual({ 2025: 9825, 2024: 19479 });
+    expect(values(cashflow, 'cash_and_equivalents')).toBeNull();
+  });
+
+  it('prefers the disclosed net operating cash line over a cash-generated subtotal', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF CASH FLOWS\t\t',
+        'For the Nine Months Ended\t2025\t2024',
+        'Cash generated from operations\t65,993\t33,198',
+        'Contributions to retirement fund\t(600)\t(700)',
+        'Interest paid\t(13,825)\t(14,858)',
+        'Income taxes paid\t(983)\t(766)',
+        'Interest received\t884\t823',
+        'Net cash flows provided by',
+        'operating activities\t51,469\t17,697',
+      ].join('\n'),
+    });
+
+    const cashflow = doc.statements.cashflow;
+    expect(cashflow).not.toBeNull();
+    expect(values(cashflow, 'net_cash_from_operating_activities')).toEqual({ 2025: 51469, 2024: 17697 });
+    const item = cashflow?.lineItems.find((entry) => entry.category === 'net_cash_from_operating_activities');
+    expect(item?.rawLabel).toMatch(/operating activities/i);
+    expect(item?.source.row).toBe(8);
+    expect(doc.warnings.some((warning) => /Replaced duplicate/.test(warning))).toBe(true);
+  });
+
+  it('prefers the net operating line when it lands in a later table', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF CASH FLOWS',
+        'For the Nine Months Ended\t2025\t2024',
+        'Cash generated from operations\t65,993\t33,198',
+        'Net cash flows used in investing activities\t(4,948)\t(7,852)',
+        '',
+        '',
+        '',
+        'For the Nine Months Ended\t2025\t2024',
+        'Net cash flows provided by operating activities\t51,469\t17,697',
+        'Net cash flows provided by (used in) financing activities\t(36,840)\t9,451',
+      ].join('\n'),
+    });
+
+    expect(values(doc.statements.cashflow, 'net_cash_from_operating_activities')).toEqual({
+      2025: 51469,
+      2024: 17697,
+    });
+  });
+
+  it('merges a split net operating total', () => {
+    const rows = mergeContinuationRows([
+      ['Net cash flows provided by'],
+      ['operating activities', '51,469', '17,697'],
+    ]);
+
+    expect(rows).toEqual([['Net cash flows provided by operating activities', '51,469', '17,697']]);
+  });
+
+  it('keeps cash-flow working-capital and tax lines out of balance/income categories', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF CASH FLOWS\t\t',
+        'For the Nine Months Ended\t2025\t2024',
+        'Changes in noncash assets, certain current liabilities and others\t29,765\t(1,054)',
+        'Income taxes paid\t(983)\t(766)',
+        'Net cash flows provided by operating activities\t51,469\t17,697',
+      ].join('\n'),
+    });
+
+    const cashflow = doc.statements.cashflow;
+    expect(cashflow).not.toBeNull();
+    expect(values(cashflow, 'changes_in_working_capital')).toEqual({ 2025: 29765, 2024: -1054 });
+    expect(values(cashflow, 'income_taxes_paid')).toEqual({ 2025: -983, 2024: -766 });
+    expect(values(cashflow, 'total_current_liabilities')).toBeNull();
+    expect(values(cashflow, 'income_tax_expense')).toBeNull();
+  });
+
+  it('labels investing and financing cash lines instead of balance-sheet categories', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF CASH FLOWS\t\t',
+        'For the Nine Months Ended\t2025\t2024',
+        'Proceeds from sale of property and equipment\t13\t-',
+        'Additions to investment property\t(133)\t(240)',
+        'Issuance of capital securities\t26,831\t-',
+        'Repurchase of capital securities\t(25,051)\t(2,236)',
+        'Acquisition of common treasury shares\t(1,130)\t-',
+        'Net cash flows used in investing activities\t(4,948)\t(7,852)',
+      ].join('\n'),
+    });
+
+    const cashflow = doc.statements.cashflow;
+    expect(cashflow).not.toBeNull();
+    expect(values(cashflow, 'proceeds_from_sale_of_assets')?.[2025]).toBe(13);
+    expect(values(cashflow, 'additions_to_investment_property')?.[2025]).toBe(-133);
+    expect(values(cashflow, 'issuance_of_capital_securities')?.[2025]).toBe(26831);
+    expect(values(cashflow, 'repurchase_of_capital_securities')?.[2025]).toBe(-25051);
+    expect(values(cashflow, 'treasury_share_repurchases')?.[2025]).toBe(-1130);
+    expect(values(cashflow, 'property_plant_and_equipment')).toBeNull();
+    expect(values(cashflow, 'investment_property')).toBeNull();
+    expect(values(cashflow, 'capital_securities')).toBeNull();
+    expect(values(cashflow, 'treasury_stock')).toBeNull();
+  });
+
+  it('appends a short label continuation to the previous numeric row', () => {
+    const rows = mergeContinuationRows([
+      ['Proceeds from availment of loans, bonds and', '304,147', '267,052'],
+      ['advances'],
+      ['Payments of:'],
+      ['Loans and bonds', '(334,813)', '(265,546)'],
+    ]);
+
+    expect(rows).toEqual([
+      ['Proceeds from availment of loans, bonds and advances', '304,147', '267,052'],
+      ['Payments of: Loans and bonds', '(334,813)', '(265,546)'],
+    ]);
+  });
+
+  it('maps dividends and distributions to dividends paid', () => {
+    const doc = parseFinancialText({
+      text: [
+        'CONSOLIDATED INTERIM STATEMENTS OF CASH FLOWS\t\t',
+        'For the Nine Months Ended\t2025\t2024',
+        'Cash dividends and distributions\t(5,197)\t(4,457)',
+        'Net cash flows provided by (used in) financing activities\t(36,840)\t9,451',
+      ].join('\n'),
+    });
+
+    expect(values(doc.statements.cashflow, 'dividends_paid')).toEqual({ 2025: -5197, 2024: -4457 });
+  });
+
+  it('reconciles the cash flow statement and flags when it does not', () => {
+    const lines = (netChange: string): string =>
+      [
+        'CONSOLIDATED INTERIM STATEMENTS OF CASH FLOWS\t\t',
+        'For the Nine Months Ended\t2025\t2024',
+        'Net cash flows provided by operating activities\t51,469\t17,697',
+        'Net cash flows used in investing activities\t(4,948)\t(7,852)',
+        'Net cash flows provided by (used in) financing activities\t(36,840)\t9,451',
+        'EFFECTS OF EXCHANGE RATE CHANGES ON CASH AND CASH EQUIVALENTS\t144\t183',
+        `NET INCREASE IN CASH AND CASH EQUIVALENTS\t${netChange}\t19,479`,
+      ].join('\n');
+
+    const balanced = parseFinancialText({ text: lines('9,825') });
+    expect(values(balanced.statements.cashflow, 'effect_of_exchange_rate_changes_on_cash')).toEqual({
+      2025: 144,
+      2024: 183,
+    });
+    expect(balanced.warnings.some((warning) => /does not reconcile/.test(warning))).toBe(false);
+
+    const broken = parseFinancialText({ text: lines('9,000') });
+    expect(broken.warnings.some((warning) => /does not reconcile/.test(warning))).toBe(true);
+  });
+
   it('keeps the current portion of long-term debt separate from short-term loans', () => {
     const doc = parseFinancialText({
       text: [

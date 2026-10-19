@@ -93,7 +93,25 @@ export type FinancialCategory =
   | 'total_non_current_liabilities'
   | 'capital_securities'
   | 'equity_reserves'
-  | 'equity_attributable_to_parent';
+  | 'equity_attributable_to_parent'
+  | 'changes_in_working_capital'
+  | 'interest_paid'
+  | 'interest_received'
+  | 'income_taxes_paid'
+  | 'contributions_to_retirement_fund'
+  | 'proceeds_from_sale_of_assets'
+  | 'additions_to_investment_property'
+  | 'dividends_received'
+  | 'proceeds_from_borrowings'
+  | 'repayments_of_borrowings'
+  | 'payments_of_lease_liabilities'
+  | 'issuance_of_capital_securities'
+  | 'repurchase_of_capital_securities'
+  | 'treasury_share_repurchases'
+  | 'proceeds_from_issuance_of_preferred_shares'
+  | 'effect_of_exchange_rate_changes_on_cash'
+  | 'cash_at_beginning_of_period'
+  | 'cash_at_end_of_period';
 
 export type DocumentFormat = 'pdf' | 'xlsx' | 'csv' | 'text' | 'manual';
 
@@ -1043,6 +1061,59 @@ const TAXONOMY: CategoryDefinition[] = [
     total: true,
   },
   {
+    key: 'changes_in_working_capital',
+    statement: 'cashflow',
+    section: 'operating_activities',
+    label: 'Changes in Working Capital',
+    synonyms: [
+      'changes in working capital',
+      'changes in operating assets and liabilities',
+      'changes in noncash assets certain current liabilities and others',
+      'changes in noncash assets',
+      'changes in current assets and liabilities',
+    ],
+  },
+  {
+    key: 'interest_paid',
+    statement: 'cashflow',
+    section: 'operating_activities',
+    label: 'Interest Paid',
+    synonyms: ['interest paid', 'interest paid net', 'cash paid for interest', 'cash interest paid'],
+  },
+  {
+    key: 'interest_received',
+    statement: 'cashflow',
+    section: 'operating_activities',
+    label: 'Interest Received',
+    synonyms: ['interest received', 'cash received for interest', 'cash interest received'],
+  },
+  {
+    key: 'income_taxes_paid',
+    statement: 'cashflow',
+    section: 'operating_activities',
+    label: 'Income Taxes Paid',
+    synonyms: [
+      'income taxes paid',
+      'income tax paid',
+      'cash paid for income taxes',
+      'income tax paid net',
+      'taxes paid',
+    ],
+  },
+  {
+    key: 'contributions_to_retirement_fund',
+    statement: 'cashflow',
+    section: 'operating_activities',
+    label: 'Contributions to Retirement Fund',
+    synonyms: [
+      'contributions to retirement fund',
+      'contribution to retirement fund',
+      'contributions to retirement plan',
+      'retirement fund contributions',
+      'retirement plan contributions',
+    ],
+  },
+  {
     key: 'net_cash_from_operating_activities',
     statement: 'cashflow',
     section: 'operating_activities',
@@ -1054,6 +1125,8 @@ const TAXONOMY: CategoryDefinition[] = [
       'net cash generated from operating activities',
       'net cash flow from operating activities',
       'net cash provided by used in operating activities',
+      'net cash flows provided by operating activities',
+      'net cash flows provided by used in operating activities',
       'cash flows from operating activities',
       'cash flow from operating activities',
       'net cash from operations',
@@ -1074,6 +1147,8 @@ const TAXONOMY: CategoryDefinition[] = [
       'net cash used in investing activities',
       'net cash flows from investing activities',
       'net cash used for investing activities',
+      'net cash flows used in investing activities',
+      'net cash flows provided by used in investing activities',
       'cash flows from investing activities',
       'net cash from investing',
       'investing activities',
@@ -1101,6 +1176,48 @@ const TAXONOMY: CategoryDefinition[] = [
     ],
   },
   {
+    key: 'proceeds_from_sale_of_assets',
+    statement: 'cashflow',
+    section: 'investing_activities',
+    label: 'Proceeds from Sale of Assets',
+    synonyms: [
+      'proceeds from sale of property plant and equipment',
+      'proceeds from disposal of property plant and equipment',
+      'proceeds from sale of property and equipment',
+      'proceeds from disposal of property and equipment',
+      'proceeds from sale of investment property',
+      'proceeds from sale of assets',
+      'proceeds from disposal of assets',
+    ],
+  },
+  {
+    key: 'additions_to_investment_property',
+    statement: 'cashflow',
+    section: 'investing_activities',
+    label: 'Additions to Investment Property',
+    synonyms: [
+      'additions to investment property',
+      'additions to investment properties',
+      'purchase of investment property',
+      'purchases of investment property',
+      'acquisition of investment property',
+      'payments for investment property',
+    ],
+  },
+  {
+    key: 'dividends_received',
+    statement: 'cashflow',
+    section: 'investing_activities',
+    label: 'Dividends Received',
+    synonyms: [
+      'dividends received',
+      'dividend received',
+      'dividend received from an associate',
+      'dividends received from associates',
+      'cash dividends received',
+    ],
+  },
+  {
     key: 'net_cash_from_financing_activities',
     statement: 'cashflow',
     section: 'financing_activities',
@@ -1111,11 +1228,110 @@ const TAXONOMY: CategoryDefinition[] = [
       'net cash used in financing activities',
       'net cash flows from financing activities',
       'net cash provided by used in financing activities',
+      'net cash flows provided by financing activities',
+      'net cash flows used in financing activities',
+      'net cash flows provided by used in financing activities',
       'cash flows from financing activities',
       'net cash from financing',
       'financing activities',
     ],
     total: true,
+  },
+  {
+    key: 'proceeds_from_borrowings',
+    statement: 'cashflow',
+    section: 'financing_activities',
+    label: 'Proceeds from Borrowings',
+    synonyms: [
+      'proceeds from availment of loans bonds and advances',
+      'proceeds from availment of loans bonds',
+      'proceeds from borrowings',
+      'proceeds from loans and borrowings',
+      'proceeds from issuance of loans and bonds',
+      'proceeds from long term borrowings',
+      'proceeds from short term borrowings',
+    ],
+  },
+  {
+    key: 'repayments_of_borrowings',
+    statement: 'cashflow',
+    section: 'financing_activities',
+    label: 'Repayments of Borrowings',
+    synonyms: [
+      'repayments of borrowings',
+      'repayment of borrowings',
+      'repayments of loans and borrowings',
+      'repayment of loans and borrowings',
+      'payments of loans and bonds',
+      'payments of loans and borrowings',
+      'payments of borrowings',
+    ],
+  },
+  {
+    key: 'payments_of_lease_liabilities',
+    statement: 'cashflow',
+    section: 'financing_activities',
+    label: 'Payments of Lease Liabilities',
+    synonyms: [
+      'payments of lease liabilities',
+      'payment of lease liabilities',
+      'repayment of lease liabilities',
+      'repayments of lease liabilities',
+      'principal payments on lease liabilities',
+      'lease liability payments',
+    ],
+  },
+  {
+    key: 'issuance_of_capital_securities',
+    statement: 'cashflow',
+    section: 'financing_activities',
+    label: 'Issuance of Capital Securities',
+    synonyms: [
+      'issuance of capital securities',
+      'issuance of perpetual securities',
+      'proceeds from issuance of capital securities',
+      'proceeds from issuance of perpetual securities',
+    ],
+  },
+  {
+    key: 'repurchase_of_capital_securities',
+    statement: 'cashflow',
+    section: 'financing_activities',
+    label: 'Repurchase of Capital Securities',
+    synonyms: [
+      'repurchase of capital securities',
+      'repurchases of capital securities',
+      'redemption of capital securities',
+      'repayment of capital securities',
+      'payments for repurchase of capital securities',
+    ],
+  },
+  {
+    key: 'treasury_share_repurchases',
+    statement: 'cashflow',
+    section: 'financing_activities',
+    label: 'Treasury Share Repurchases',
+    synonyms: [
+      'acquisition of common treasury shares',
+      'acquisition of treasury shares',
+      'purchase of treasury shares',
+      'repurchase of treasury shares',
+      'repurchases of treasury shares',
+      'treasury share repurchases',
+      'treasury shares acquired',
+    ],
+  },
+  {
+    key: 'proceeds_from_issuance_of_preferred_shares',
+    statement: 'cashflow',
+    section: 'financing_activities',
+    label: 'Proceeds from Issuance of Preferred Shares',
+    synonyms: [
+      'issuance of preferred shares',
+      'proceeds from issuance of preferred shares',
+      'issuance of preference shares',
+      'proceeds from issue of preferred shares',
+    ],
   },
   {
     key: 'dividends_paid',
@@ -1128,7 +1344,52 @@ const TAXONOMY: CategoryDefinition[] = [
       'payment of dividends',
       'payments of dividends',
       'cash dividends paid',
+      'cash dividends and distributions',
+      'dividends and distributions',
+      'dividends paid and distributions',
+      'distributions to equity holders',
+      'distributions paid',
       'dividends',
+    ],
+  },
+  {
+    key: 'effect_of_exchange_rate_changes_on_cash',
+    statement: 'cashflow',
+    section: 'cash_summary',
+    label: 'Effect of Exchange Rate Changes on Cash',
+    synonyms: [
+      'effect of exchange rate changes on cash and cash equivalents',
+      'effects of exchange rate changes on cash and cash equivalents',
+      'effect of exchange rate changes on cash',
+      'effects of exchange rate changes on cash',
+      'effect of foreign exchange rate changes',
+      'effects of foreign exchange rate changes',
+    ],
+  },
+  {
+    key: 'cash_at_beginning_of_period',
+    statement: 'cashflow',
+    section: 'cash_summary',
+    label: 'Cash at Beginning of Period',
+    synonyms: [
+      'cash and cash equivalents at beginning of period',
+      'cash and cash equivalents at the beginning of period',
+      'cash and cash equivalents at beginning of year',
+      'cash at beginning of period',
+      'cash at the beginning of period',
+    ],
+  },
+  {
+    key: 'cash_at_end_of_period',
+    statement: 'cashflow',
+    section: 'cash_summary',
+    label: 'Cash at End of Period',
+    synonyms: [
+      'cash and cash equivalents at end of period',
+      'cash and cash equivalents at the end of period',
+      'cash and cash equivalents at end of year',
+      'cash at end of period',
+      'cash at the end of period',
     ],
   },
   {
@@ -1143,6 +1404,8 @@ const TAXONOMY: CategoryDefinition[] = [
       'net increase decrease in cash and cash equivalents',
       'net increase in cash',
       'net decrease in cash',
+      'net increase in cash and cash equivalents',
+      'net decrease in cash and cash equivalents',
       'net change in cash cash equivalents',
     ],
     total: true,
@@ -1456,6 +1719,30 @@ function matchCategory(rawLabel: string, minConfidence: number): MatchResult {
   return { category: null, confidence: 0 };
 }
 
+const EXPLICIT_NET_LABEL_RE = /\bnet (?:cash|increase|decrease)\b/;
+
+function isExplicitNetLabel(label: string): boolean {
+  return EXPLICIT_NET_LABEL_RE.test(normalizeLabel(label));
+}
+
+/**
+ * A later line should replace an earlier one mapped to the same category when it is a
+ * better match. This keeps explicit "net cash ..." totals from losing to subtotals such
+ * as "Cash generated from operations" that only fuzzy-match the same category.
+ */
+function isMoreSpecificMatch(
+  confidence: number,
+  label: string,
+  existing: NormalizedLineItem
+): boolean {
+  if (confidence > existing.confidence + 0.05) return true;
+  return (
+    confidence >= existing.confidence - 0.05 &&
+    isExplicitNetLabel(label) &&
+    !isExplicitNetLabel(existing.rawLabel)
+  );
+}
+
 const HEADER_YEAR_RE = /^(?:19|20)\d{2}$/;
 const HEADER_YEAR_PREFIX_RE = /^(?:19|20)\d{2}\b/;
 
@@ -1506,14 +1793,28 @@ function isSectionHeaderRow(text: string): boolean {
   return SECTION_HEADERS.has(normalized) || /^cash flows from /.test(normalized);
 }
 
+const LABEL_CONNECTOR_TAIL_RE = /\b(?:and|of|for|to|in|on|with|the)$/i;
+
 export function mergeContinuationRows(rows: string[][]): string[][] {
   const out: string[][] = [];
   let pending: string | null = null;
   for (const row of rows) {
     if (row.length === 1 && !/\d/.test(row[0])) {
       const text = row[0].trim();
+      const previous = out[out.length - 1];
+      if (
+        previous &&
+        previous.length > 1 &&
+        LABEL_CONNECTOR_TAIL_RE.test(previous[0].trim().replace(/[,;:]+$/, ''))
+      ) {
+        previous[0] = `${previous[0].trim()} ${text}`.trim();
+        continue;
+      }
       if (isSectionHeaderRow(text)) {
-        pending = null;
+        if (pending) {
+          out.push([pending]);
+          pending = null;
+        }
         out.push(row);
       } else {
         pending = pending ? `${pending} ${text}` : text;
@@ -1606,6 +1907,20 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
     });
     const existing = items.get(match.category);
     if (existing) {
+      if (isMoreSpecificMatch(match.confidence, parsed.label, existing)) {
+        const previousLabel = existing.rawLabel;
+        for (const period of periodLabels) {
+          if (values[period] !== null) existing.values[period] = values[period];
+        }
+        existing.rawLabel = parsed.label;
+        existing.confidence = match.confidence;
+        existing.derived = false;
+        existing.source = { table: table.name, row: parsed.rowIndex };
+        warnings.push(
+          `Replaced duplicate "${previousLabel}" with more specific "${parsed.label}" for "${def.label}".`
+        );
+        continue;
+      }
       for (const period of periodLabels) {
         if (existing.values[period] === null && values[period] !== null) {
           existing.values[period] = values[period];
@@ -1637,6 +1952,14 @@ function buildIntermediateStatement(table: RawTable, options: ResolvedOptions): 
     type = heading ?? (Object.keys(statementScores) as StatementType[]).reduce((best, candidate) =>
       statementScores[candidate] > statementScores[best] ? candidate : best
     );
+  }
+
+  if (type === 'cashflow') {
+    for (const [category, item] of [...items]) {
+      if (getDefinition(category).statement === 'cashflow') continue;
+      unmapped.push(item.rawLabel);
+      items.delete(category);
+    }
   }
 
   return {
@@ -1683,6 +2006,22 @@ function mergeByType(statements: IntermediateStatement[], type: StatementType): 
       const existing = items.get(category);
       if (!existing) {
         items.set(category, { ...item, values: { ...item.values } });
+        continue;
+      }
+      if (isMoreSpecificMatch(item.confidence, item.rawLabel, existing)) {
+        const label = getDefinition(category).label;
+        const previousLabel = existing.rawLabel;
+        for (const period of statement.periods) {
+          const value = item.values[period];
+          if (value !== null && value !== undefined) existing.values[period] = value;
+        }
+        existing.rawLabel = item.rawLabel;
+        existing.confidence = item.confidence;
+        existing.derived = item.derived;
+        existing.source = { ...item.source };
+        warnings.push(
+          `Replaced duplicate "${previousLabel}" with more specific "${item.rawLabel}" for "${label}".`
+        );
         continue;
       }
       for (const period of statement.periods) {
@@ -1863,12 +2202,13 @@ function applyCashflowDerived(statement: NormalizedStatement): NormalizedStateme
     const operating = getValue(items, 'net_cash_from_operating_activities', period);
     const investing = getValue(items, 'net_cash_from_investing_activities', period);
     const financing = getValue(items, 'net_cash_from_financing_activities', period);
-    if (operating !== null || investing !== null || financing !== null) {
+    const exchange = getValue(items, 'effect_of_exchange_rate_changes_on_cash', period);
+    if (operating !== null || investing !== null || financing !== null || exchange !== null) {
       addDerivedItem(
         items,
         'net_change_in_cash',
         period,
-        roundValue((operating ?? 0) + (investing ?? 0) + (financing ?? 0))
+        roundValue((operating ?? 0) + (investing ?? 0) + (financing ?? 0) + (exchange ?? 0))
       );
     }
   }
@@ -1930,6 +2270,30 @@ function formatNumber(value: number): string {
   const rounded = roundValue(value);
   const sign = rounded < 0 ? '-' : '';
   return sign + Math.abs(rounded).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function validateCashflow(statement: NormalizedStatement): string[] {
+  const items = new Map(statement.lineItems.map((item) => [item.category, item] as const));
+  const warnings: string[] = [];
+  for (const period of statement.periods) {
+    const operating = getValue(items, 'net_cash_from_operating_activities', period);
+    const investing = getValue(items, 'net_cash_from_investing_activities', period);
+    const financing = getValue(items, 'net_cash_from_financing_activities', period);
+    const net = getValue(items, 'net_change_in_cash', period);
+    if (operating === null || investing === null || financing === null || net === null) continue;
+    const exchange = getValue(items, 'effect_of_exchange_rate_changes_on_cash', period) ?? 0;
+    const expected = roundValue(operating + investing + financing + exchange);
+    const difference = roundValue(net - expected);
+    const tolerance = Math.max(1, Math.abs(net) * 0.005);
+    if (Math.abs(difference) > tolerance) {
+      warnings.push(
+        `Cash flow statement does not reconcile for period "${period}": operating ${formatNumber(operating)} + ` +
+          `investing ${formatNumber(investing)} + financing ${formatNumber(financing)} + FX ${formatNumber(exchange)} ` +
+          `= ${formatNumber(expected)}, but net change in cash is ${formatNumber(net)} (difference ${formatNumber(difference)}).`
+      );
+    }
+  }
+  return warnings;
 }
 
 function validateBalanceSheet(statement: NormalizedStatement, options: ResolvedOptions): BalanceSheetValidation[] {
@@ -2129,6 +2493,9 @@ function assembleDocument(
   const income = mergeByType(intermediates, 'income');
   const balance = mergeByType(intermediates, 'balance');
   const cashflow = mergeByType(intermediates, 'cashflow');
+  for (const statement of [income, balance, cashflow]) {
+    statement?.warnings.forEach((warning) => warnings.push(warning));
+  }
   const derivedIncome = income ? applyDerived(income) : null;
   const derivedBalance = balance ? applyDerived(balance) : null;
   const derivedCashflow = cashflow ? applyDerived(cashflow) : null;
@@ -2138,6 +2505,10 @@ function assembleDocument(
   unbalanced.forEach((validation) =>
     warnings.push(`Balance sheet does not balance for period "${validation.period}": ${validation.message}`)
   );
+
+  if (derivedCashflow) {
+    validateCashflow(derivedCashflow).forEach((warning) => warnings.push(warning));
+  }
 
   return {
     source,

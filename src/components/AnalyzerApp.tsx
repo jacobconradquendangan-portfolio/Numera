@@ -82,9 +82,19 @@ export default function AnalyzerApp() {
   const [parsedBaseline, setParsedBaseline] = useState<ParsedDocument | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const pdfUrlRef = useRef<string | null>(null);
+  const [searchableUrl, setSearchableUrl] = useState<string | null>(null);
+  const searchableUrlRef = useRef<string | null>(null);
   const [clearTick, setClearTick] = useState(0);
   const [activeView, setActiveView] = useState<'analysis' | 'dashboard' | 'verify'>('analysis');
   const [printScope, setPrintScope] = useState<ReportScope | null>(null);
+
+  const releaseSearchable = useCallback(() => {
+    if (searchableUrlRef.current) {
+      URL.revokeObjectURL(searchableUrlRef.current);
+      searchableUrlRef.current = null;
+    }
+    setSearchableUrl(null);
+  }, []);
 
   const releasePdf = useCallback(() => {
     if (pdfUrlRef.current) {
@@ -92,7 +102,8 @@ export default function AnalyzerApp() {
       pdfUrlRef.current = null;
     }
     setPdfUrl(null);
-  }, []);
+    releaseSearchable();
+  }, [releaseSearchable]);
 
   const loadPdf = useCallback(
     (file: File) => {
@@ -106,21 +117,21 @@ export default function AnalyzerApp() {
     [releasePdf]
   );
 
-  const loadPdfBase64 = useCallback(
+  const loadSearchableBase64 = useCallback(
     (base64: string) => {
       try {
         const binary = atob(base64);
         const bytes = new Uint8Array(binary.length);
         for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-        releasePdf();
+        releaseSearchable();
         const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-        pdfUrlRef.current = url;
-        setPdfUrl(url);
+        searchableUrlRef.current = url;
+        setSearchableUrl(url);
       } catch {
         /* keep whatever source is already loaded */
       }
     },
-    [releasePdf]
+    [releaseSearchable]
   );
 
   useEffect(() => () => releasePdf(), [releasePdf]);
@@ -172,7 +183,7 @@ export default function AnalyzerApp() {
           if (parsedInput) {
             setParsedBaseline(payload.document);
             const searchable = payload.document.searchablePdf;
-            if (searchable) loadPdfBase64(searchable.base64);
+            if (searchable) loadSearchableBase64(searchable.base64);
             const statements = [
               payload.document.statements.income,
               payload.document.statements.balance,
@@ -188,7 +199,7 @@ export default function AnalyzerApp() {
         setLoading(false);
       }
     },
-    [supplemental, dayCountBasis, netIncomeBasis, manualModel, loadPdfBase64]
+    [supplemental, dayCountBasis, netIncomeBasis, manualModel, loadSearchableBase64]
   );
 
   const handleFile = useCallback(
@@ -591,6 +602,7 @@ export default function AnalyzerApp() {
               baseline={parsedBaseline}
               model={manualModel}
               pdfUrl={pdfUrl}
+              searchableUrl={searchableUrl}
               onRecompute={handleVerifyRecompute}
               busy={loading}
             />

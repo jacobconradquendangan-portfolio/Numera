@@ -6,6 +6,7 @@ export function normalizeToken(text: string): string {
 }
 
 const MIN_TERM_LENGTH = 4;
+const CURRENCY_PREFIX_RE = /^(?:php|usd|p|us)+/;
 
 /**
  * Returns the indexes of words to highlight for the given search terms.
@@ -18,6 +19,7 @@ export function highlightWordIndexes(words: SourcePageWord[], terms: string[]): 
   if (!termSet.size || !words.length) return [];
 
   const maxTermLength = Math.max(...[...termSet].map((term) => term.length));
+  const numericTerms = new Set([...termSet].filter((term) => /\d/.test(term)));
   const tokens = words.map((word) => normalizeToken(word.text));
   const flags = new Set<number>();
 
@@ -30,6 +32,13 @@ export function highlightWordIndexes(words: SourcePageWord[], terms: string[]): 
       if (termSet.has(joined)) {
         for (let index = start; index <= end; index += 1) flags.add(index);
         break;
+      }
+      if (end === start && /\d/.test(joined)) {
+        const stripped = joined.replace(CURRENCY_PREFIX_RE, '');
+        if (stripped !== joined && numericTerms.has(stripped)) {
+          flags.add(start);
+          break;
+        }
       }
       if (joined.length > maxTermLength) break;
     }

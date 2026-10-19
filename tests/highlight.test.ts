@@ -33,4 +33,9 @@ describe('highlightWordIndexes', () => {
   it('prefers a single-word exact match', () => {
     expect(highlightWordIndexes(words('Cash', 'Equivalents'), ['Cash'])).toEqual([0]);
   });
+
+  it('matches a figure with a currency prefix attached by OCR', () => {
+    expect(highlightWordIndexes(words('Proceeds', 'P267,052'), ['267,052'])).toEqual([1]);
+    expect(highlightWordIndexes(words('Cash', 'PHP40,214'), ['40,214'])).toEqual([1]);
+  });
 });

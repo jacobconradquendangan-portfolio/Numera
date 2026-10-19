@@ -12,6 +12,7 @@ interface VerifyViewProps {
   baseline: ParsedDocument;
   model: ManualModel;
   pdfUrl: string | null;
+  searchableUrl: string | null;
   onRecompute: () => void;
   busy: boolean;
 }
@@ -99,7 +100,7 @@ function StatusMark({ status }: { status: VerifyStatus }) {
   return <span className="font-mono text-[0.6rem] uppercase tracking-[0.12em]">{status}</span>;
 }
 
-export default function VerifyView({ baseline, model, pdfUrl, onRecompute, busy }: VerifyViewProps) {
+export default function VerifyView({ baseline, model, pdfUrl, searchableUrl, onRecompute, busy }: VerifyViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const [target, setTarget] = useState<Target | null>(null);
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
@@ -108,6 +109,9 @@ export default function VerifyView({ baseline, model, pdfUrl, onRecompute, busy 
   const firstMarkRef = useRef<HTMLSpanElement | null>(null);
 
   const sourcePages = baseline.sourcePages ?? null;
+  const hasSourcePages = Boolean(sourcePages?.length);
+  const pageCount = sourcePages?.length ?? null;
+  const openUrl = hasSourcePages ? searchableUrl : pdfUrl;
   const sourcePage = target?.page != null ? sourcePages?.find((page) => page.page === target.page) ?? null : null;
   const highlightIdx = useMemo(
     () => (sourcePage && target ? highlightWordIndexes(sourcePage.words, target.terms) : []),
@@ -143,7 +147,8 @@ export default function VerifyView({ baseline, model, pdfUrl, onRecompute, busy 
   };
 
   const goToPage = (page: number) => {
-    setTarget({ page, terms: [] });
+    const clamped = pageCount ? Math.min(Math.max(1, page), pageCount) : Math.max(1, page);
+    setTarget({ page: clamped, terms: [] });
     focusPreview();
   };
 
@@ -206,14 +211,16 @@ export default function VerifyView({ baseline, model, pdfUrl, onRecompute, busy 
   };
 
   const currentPage = target?.page ?? null;
+  const nextDisabled = currentPage !== null && pageCount !== null && currentPage >= pageCount;
 
+  const pageNoun = hasSourcePages ? 'Source' : 'Page';
   const targetStatus =
     target === null
       ? 'Pick a line item to open its source'
       : target.page !== null && target.terms.length
-        ? `Page ${target.page} · highlighting “${target.terms[0]}”`
+        ? `${pageNoun} ${target.page} · highlighting “${target.terms[0]}”`
         : target.page !== null
-          ? `Showing page ${target.page}`
+          ? `Showing ${pageNoun.toLowerCase()} ${target.page}`
           : `Locating “${target.terms[0]}”`;
 
   return (
@@ -313,25 +320,31 @@ export default function VerifyView({ baseline, model, pdfUrl, onRecompute, busy 
               <button
                 type="button"
                 onClick={() => goToPage((currentPage ?? 0) + 1)}
-                className="rounded-sm border border-line2 px-2 py-1 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted transition hover:border-accentdim hover:text-paper"
+                disabled={nextDisabled}
+                className={cx(
+                  'rounded-sm border px-2 py-1 font-mono text-[0.62rem] uppercase tracking-[0.14em] transition',
+                  nextDisabled
+                    ? 'cursor-not-allowed border-line text-faint'
+                    : 'border-line2 text-muted hover:border-accentdim hover:text-paper'
+                )}
               >
                 Next
               </button>
             </div>
             <span className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-faint">{targetStatus}</span>
             <div className="ml-auto flex items-center gap-3">
-              {baseline.searchablePdf && pdfUrl ? (
+              {baseline.searchablePdf && searchableUrl ? (
                 <a
-                  href={pdfUrl}
+                  href={searchableUrl}
                   download={`${(baseline.source.filename ?? 'statements').replace(/\.[a-z0-9]+$/i, '')}-searchable.pdf`}
                   className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-accent underline-offset-2 hover:underline"
                 >
                   Download searchable PDF
                 </a>
               ) : null}
-              {pdfUrl && target && (target.page !== null || target.terms.length) ? (
+              {openUrl && target && (target.page !== null || target.terms.length) ? (
                 <a
-                  href={pdfFragment(pdfUrl, target)}
+                  href={pdfFragment(openUrl, target)}
                   target="_blank"
                   rel="noreferrer"
                   className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-accent underline-offset-2 hover:underline"
@@ -377,7 +390,7 @@ export default function VerifyView({ baseline, model, pdfUrl, onRecompute, busy 
                 ) : null}
               </div>
             </div>
-          ) : pdfUrl && target && (target.page !== null || target.terms.length) ? (
+          ) : !hasSourcePages && pdfUrl && target && (target.page !== null || target.terms.length) ? (
             <iframe
               key={JSON.stringify(target)}
               src={pdfFragment(pdfUrl, target)}
@@ -480,14 +493,14 @@ export default function VerifyView({ baseline, model, pdfUrl, onRecompute, busy 
                                       : 'border-line2 text-muted group-hover:border-accentdim group-hover:text-accent'
                                   )}
                                 >
-                                  {page !== null ? `show page ${page}` : 'find source'}
+                                  {page !== null ? `show ${hasSourcePages ? 'source' : 'page'} ${page}` : 'find source'}
                                 </span>
                               ) : null}
                             </span>
                           </button>
-                          {pdfUrl && page !== null ? (
+                          {openUrl && page !== null ? (
                             <a
-                              href={pdfFragment(pdfUrl, targetForRow(row))}
+                              href={pdfFragment(openUrl, targetForRow(row))}
                               target="_blank"
                               rel="noreferrer"
                               aria-label={`Open the source for ${row.label} in a new tab`}
